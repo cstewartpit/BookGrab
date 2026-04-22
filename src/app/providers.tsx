@@ -3,6 +3,7 @@
 import { ThemeProvider, createTheme } from "@aws-amplify/ui-react";
 import { useState, useEffect, ReactNode } from "react";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { TransmissionProvider } from "@/contexts/TransmissionContext";
 import "@aws-amplify/ui-react/styles.css";
 
 interface ProvidersProps {
@@ -84,11 +85,11 @@ export default function Providers({ children }: ProvidersProps) {
 
   return (
     <SettingsProvider>
-      <ThemeProvider theme={theme} colorMode={colorMode}>
-        <div className="amplify-app">
-          {children}
-        </div>
-      </ThemeProvider>
+      <TransmissionProvider>
+        <ThemeProvider theme={theme} colorMode={colorMode}>
+          <div className="amplify-app">{children}</div>
+        </ThemeProvider>
+      </TransmissionProvider>
     </SettingsProvider>
   );
 }

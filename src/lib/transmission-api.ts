@@ -1,6 +1,49 @@
 import { getServerEnvVariables } from "./env";
 import { TransmissionResponse } from "../types";
 
+export type TransmissionTorrent = {
+  id: number;
+  name: string;
+  hashString: string;
+  percentDone: number;
+  status: number;
+  rateDownload: number;
+  eta: number;
+  downloadDir: string;
+};
+
+export async function listTorrents(): Promise<TransmissionTorrent[]> {
+  const { TRANSMISSION_URL } = getServerEnvVariables();
+  const payload = {
+    method: "torrent-get",
+    arguments: {
+      fields: [
+        "id",
+        "name",
+        "hashString",
+        "percentDone",
+        "status",
+        "rateDownload",
+        "eta",
+        "downloadDir",
+      ],
+    },
+  };
+  let res = await makeTransmissionRequest(TRANSMISSION_URL, payload);
+  if (res.status === 409) {
+    const sid = res.headers.get("X-Transmission-Session-Id");
+    if (!sid) throw new Error("Failed to get Transmission session ID");
+    res = await makeTransmissionRequest(TRANSMISSION_URL, payload, sid);
+  }
+  if (!res.ok) {
+    throw new Error(`Transmission RPC ${res.status} ${res.statusText}`);
+  }
+  const data = (await res.json()) as {
+    arguments?: { torrents?: TransmissionTorrent[] };
+  };
+  return data.arguments?.torrents ?? [];
+}
+
 export async function addTorrent(
   torrentUrl: string,
   category: "audiobook" | "ebook",

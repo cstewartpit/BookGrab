@@ -14,12 +14,17 @@ interface BrowseCategoryPageProps {
 }
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: "seeds", label: "Most Seeders" },
-  { value: "times_completed", label: "Most Grabbed" },
-  { value: "date", label: "Newest" },
-  { value: "size", label: "Largest" },
-  { value: "name", label: "Name A-Z" },
+  { value: "seedersDesc", label: "Most Seeders" },
+  { value: "snatchedDesc", label: "Most Grabbed" },
+  { value: "dateDesc", label: "Newest" },
+  { value: "dateAsc", label: "Oldest" },
+  { value: "sizeDesc", label: "Largest" },
+  { value: "sizeAsc", label: "Smallest" },
+  { value: "titleAsc", label: "Name A-Z" },
+  { value: "titleDesc", label: "Name Z-A" },
 ];
+
+const DEFAULT_SORT = "seedersDesc";
 
 const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
   { value: "all", label: "All" },
@@ -51,7 +56,7 @@ const CATEGORY_TITLES: Record<Category, string> = {
 function buildUrl(cat: Category, sort: string, tag?: string): string {
   const params = new URLSearchParams();
   if (cat !== "all") params.set("cat", cat);
-  if (sort !== "seeds") params.set("sort", sort);
+  if (sort !== DEFAULT_SORT) params.set("sort", sort);
   if (tag) params.set("tag", tag);
   const qs = params.toString();
   return qs ? `/?${qs}` : "/";
@@ -64,7 +69,6 @@ export default function BrowseCategoryPage({
 }: BrowseCategoryPageProps) {
   const router = useRouter();
   const [sort, setSort] = useState(initialSort);
-  const [tagInput, setTagInput] = useState(initialTag ?? "");
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -77,10 +81,6 @@ export default function BrowseCategoryPage({
   useEffect(() => {
     setSort(initialSort);
   }, [initialSort]);
-
-  useEffect(() => {
-    setTagInput(initialTag ?? "");
-  }, [initialTag]);
 
   useEffect(() => {
     setPage(1);
@@ -132,16 +132,6 @@ export default function BrowseCategoryPage({
   const changeSort = (newSort: string) => {
     setSort(newSort);
     router.replace(buildUrl(category, newSort, activeTag || undefined));
-  };
-
-  const applyTag = () => {
-    const t = tagInput.trim();
-    router.replace(buildUrl(category, sort, t || undefined));
-  };
-
-  const clearTag = () => {
-    setTagInput("");
-    router.replace(buildUrl(category, sort, undefined));
   };
 
   return (
@@ -268,92 +258,33 @@ export default function BrowseCategoryPage({
         >
           Genre
         </span>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-          }}
-        >
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") applyTag();
-              }}
-              placeholder="fantasy, mystery, biography..."
-              style={{
-                flex: 1,
-                minWidth: "180px",
-                padding: "8px 12px",
-                background: "#0f172a",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                color: "#e2e8f0",
-                fontSize: "13px",
-              }}
-            />
-            <button
-              onClick={applyTag}
-              style={{
-                padding: "8px 14px",
-                background: "#3b82f6",
-                border: "none",
-                borderRadius: "8px",
-                color: "#fff",
-                fontSize: "12.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Apply
-            </button>
-            {activeTag && (
-              <button
-                onClick={clearTag}
-                style={{
-                  padding: "8px 14px",
-                  background: "transparent",
-                  border: "1px solid #334155",
-                  borderRadius: "8px",
-                  color: "#94a3b8",
-                  fontSize: "12.5px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-            {TAG_SUGGESTIONS.map((t) => (
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          {TAG_SUGGESTIONS.map((t) => {
+            const selected = activeTag.toLowerCase() === t;
+            return (
               <button
                 key={t}
                 onClick={() => {
-                  setTagInput(t);
-                  router.replace(buildUrl(category, sort, t));
+                  router.replace(
+                    buildUrl(category, sort, selected ? undefined : t),
+                  );
                 }}
                 style={{
-                  padding: "3px 10px",
-                  background:
-                    activeTag.toLowerCase() === t ? "#1e3a8a" : "#0f172a",
-                  border: "1px solid #334155",
+                  padding: "5px 12px",
+                  background: selected ? "#1e3a8a" : "#0f172a",
+                  border: `1px solid ${selected ? "#3b82f6" : "#334155"}`,
                   borderRadius: "999px",
-                  color:
-                    activeTag.toLowerCase() === t ? "#93c5fd" : "#64748b",
-                  fontSize: "11px",
-                  fontWeight: 500,
+                  color: selected ? "#93c5fd" : "#94a3b8",
+                  fontSize: "12px",
+                  fontWeight: 600,
                   cursor: "pointer",
                   textTransform: "capitalize",
                 }}
               >
                 {t}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 

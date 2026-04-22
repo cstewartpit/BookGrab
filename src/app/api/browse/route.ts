@@ -6,13 +6,24 @@ import {
   setCachedBrowse,
 } from "@/lib/mam-session";
 
+// MAM's loadSearchJSONbasic.php accepts <field>Desc/<field>Asc values.
+// Anything else falls through to MAM's default ordering (seeders ascending),
+// which is rarely what we want — so whitelist the real values and reject
+// legacy plain field names.
 const ALLOWED_SORTS = new Set([
-  "seeds",
-  "date",
-  "size",
-  "name",
-  "times_completed",
+  "seedersDesc",
+  "seedersAsc",
+  "dateDesc",
+  "dateAsc",
+  "sizeDesc",
+  "sizeAsc",
+  "titleDesc",
+  "titleAsc",
+  "snatchedDesc",
+  "snatchedAsc",
 ]);
+
+const DEFAULT_SORT = "seedersDesc";
 
 function parseCategory(raw: string | null): BrowseCategory {
   if (raw === "audiobook" || raw === "ebook") return raw;
@@ -22,8 +33,8 @@ function parseCategory(raw: string | null): BrowseCategory {
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   const category = parseCategory(sp.get("cat"));
-  const rawSort = sp.get("sort") || "seeds";
-  const sort = ALLOWED_SORTS.has(rawSort) ? rawSort : "seeds";
+  const rawSort = sp.get("sort") || DEFAULT_SORT;
+  const sort = ALLOWED_SORTS.has(rawSort) ? rawSort : DEFAULT_SORT;
   const start = Math.max(0, parseInt(sp.get("start") || "0", 10));
   const tag = sp.get("tag")?.trim() || undefined;
   const noCache = sp.get("noCache") === "1";

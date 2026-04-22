@@ -157,7 +157,7 @@ function HomeContent() {
     rawCat === "audiobook" || rawCat === "ebook" || rawCat === "all"
       ? rawCat
       : "all";
-  const sort = sp.get("sort") || "seeds";
+  const sort = sp.get("sort") || "seedersDesc";
   const tag = sp.get("tag") || undefined;
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

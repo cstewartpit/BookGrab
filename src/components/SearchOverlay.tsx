@@ -15,7 +15,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [hasSearched, setHasSearched] = useState(false);
-  const [sort, setSort] = useState("seeds");
+  const [sort, setSort] = useState("seedersDesc");
   const [filter, setFilter] = useState<"all" | "audiobook" | "ebook">("all");
 
   useEffect(() => {
@@ -120,11 +120,11 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 fontSize: "13px",
               }}
             >
-              <option value="seeds">Most Seeders</option>
-              <option value="date">Date Added</option>
-              <option value="size">File Size</option>
-              <option value="name">Name</option>
-              <option value="times_completed">Most Snatched</option>
+              <option value="seedersDesc">Most Seeders</option>
+              <option value="snatchedDesc">Most Grabbed</option>
+              <option value="dateDesc">Newest</option>
+              <option value="sizeDesc">Largest</option>
+              <option value="titleAsc">Name A-Z</option>
             </select>
             <div style={{ display: "flex", gap: "6px" }}>
               {(["all", "ebook", "audiobook"] as const).map((f) => (

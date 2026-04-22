@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q");
   const startNumber = parseInt(searchParams.get("start") || "0", 10);
-  const sortType = searchParams.get("sort") || "seeds";
+  const sortType = searchParams.get("sort") || "seedersDesc";
 
   if (!query) {
     return NextResponse.json(

@@ -69,6 +69,7 @@ function Header({
               BookGrab
             </div>
             <div
+              className="bg-header-tagline"
               style={{
                 fontSize: "11px",
                 color: "#64748b",

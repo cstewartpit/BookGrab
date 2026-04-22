@@ -150,23 +150,21 @@ export default function BookRow({ book }: { book: Book }) {
           ? "#374151"
           : "#3b82f6";
 
+  const statusTooltip = downloadBadge
+    ? `In Transmission: ${tx?.name}`
+    : inLibrary
+      ? "Already in your library"
+      : (book.seeders ?? 0) === 0
+        ? "No one is sharing this right now — it may not start downloading"
+        : `${book.seeders} sharing`;
+
   return (
     <div
+      className="bg-book-row"
       title={grabStatus === "error" ? errorMessage : undefined}
-      style={{
-        display: "grid",
-        gridTemplateColumns: "auto minmax(0, 1fr) auto auto auto auto",
-        alignItems: "center",
-        gap: "10px",
-        padding: "8px 12px",
-        background: "#1e293b",
-        border: "1px solid #334155",
-        borderRadius: "8px",
-        fontSize: "13px",
-        color: "#e2e8f0",
-      }}
     >
       <span
+        className="bg-row-badge"
         style={{
           padding: "2px 6px",
           borderRadius: "4px",
@@ -181,7 +179,7 @@ export default function BookRow({ book }: { book: Book }) {
         {book.category === "audiobook" ? "AUD" : "EBK"}
       </span>
 
-      <div style={{ minWidth: 0 }}>
+      <div className="bg-row-title" style={{ minWidth: 0 }}>
         <a
           href={`https://www.myanonamouse.net/t/${book.id}`}
           target="_blank"
@@ -215,6 +213,7 @@ export default function BookRow({ book }: { book: Book }) {
       </div>
 
       <span
+        className="bg-row-format"
         style={{
           color: "#64748b",
           fontSize: "11px",
@@ -229,6 +228,7 @@ export default function BookRow({ book }: { book: Book }) {
       </span>
 
       <span
+        className="bg-row-size"
         style={{
           color: "#94a3b8",
           fontSize: "12px",
@@ -241,15 +241,8 @@ export default function BookRow({ book }: { book: Book }) {
       </span>
 
       <span
-        title={
-          downloadBadge
-            ? `In Transmission: ${tx?.name}`
-            : inLibrary
-              ? "Already in your library"
-              : (book.seeders ?? 0) === 0
-                ? "No one is sharing this right now — it may not start downloading"
-                : `${book.seeders} sharing`
-        }
+        className="bg-row-status"
+        title={statusTooltip}
         style={{
           minWidth: "140px",
           textAlign: "center",
@@ -268,6 +261,7 @@ export default function BookRow({ book }: { book: Book }) {
       </span>
 
       <button
+        className="bg-row-button"
         onClick={handleGrab}
         disabled={isGrabbing || grabStatus === "success"}
         style={{
@@ -287,6 +281,43 @@ export default function BookRow({ book }: { book: Book }) {
       >
         {grabLabel}
       </button>
+
+      {/* Mobile-only combined meta row. Desktop hides this via CSS. */}
+      <div className="bg-row-metarow">
+        <span
+          style={{
+            color: "#64748b",
+            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            textTransform: "uppercase",
+            letterSpacing: "0.3px",
+          }}
+        >
+          {book.format}
+        </span>
+        {book.size && (
+          <span
+            style={{
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+            }}
+          >
+            {book.size}
+          </span>
+        )}
+        <span
+          title={statusTooltip}
+          style={{
+            marginLeft: "auto",
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: "6px",
+            background: statusBadge.bg,
+            color: statusBadge.fg,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {statusBadge.label}
+        </span>
+      </div>
     </div>
   );
 }

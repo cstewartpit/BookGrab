@@ -166,13 +166,7 @@ export default function BrowseCategoryPage({
   };
 
   return (
-    <div
-      style={{
-        padding: "16px",
-        maxWidth: "1100px",
-        margin: "0 auto",
-      }}
-    >
+    <div className="bg-page">
       <h1
         style={{
           fontSize: "22px",
@@ -215,20 +209,9 @@ export default function BrowseCategoryPage({
       <ActivityStrip />
 
       {/* Filter bar */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "80px 1fr",
-          alignItems: "center",
-          gap: "10px 12px",
-          marginBottom: "16px",
-          padding: "14px",
-          background: "#1e293b",
-          border: "1px solid #334155",
-          borderRadius: "10px",
-        }}
-      >
+      <div className="bg-filter-bar">
         <span
+          className="bg-filter-label"
           style={{
             fontSize: "12px",
             fontWeight: 600,
@@ -302,6 +285,7 @@ export default function BrowseCategoryPage({
         </div>
 
         <span
+          className="bg-filter-label"
           style={{
             fontSize: "12px",
             fontWeight: 600,
@@ -334,6 +318,7 @@ export default function BrowseCategoryPage({
         </div>
 
         <span
+          className="bg-filter-label"
           style={{
             fontSize: "12px",
             fontWeight: 600,
@@ -367,6 +352,7 @@ export default function BrowseCategoryPage({
         </select>
 
         <span
+          className="bg-filter-label"
           style={{
             fontSize: "12px",
             fontWeight: 600,

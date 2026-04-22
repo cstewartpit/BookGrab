@@ -1,11 +1,22 @@
 import { getServerEnvVariables } from "./env";
 import { Book, SearchResponse } from "../types";
 
+export type BrowseCategory = "audiobook" | "ebook" | "all";
+
+export type SearchOptions = {
+  category?: BrowseCategory;
+  tag?: string;
+};
+
+const MAIN_CAT_AUDIOBOOK = "13";
+const MAIN_CAT_EBOOK = "14";
+
 export async function searchBooks(
   query: string,
   mamToken?: string,
   startNumber: number = 0,
   sortType: string = "seeds",
+  options: SearchOptions = {},
 ): Promise<SearchResponse> {
   try {
     const { MAM_TOKEN: envToken } = getServerEnvVariables();
@@ -17,24 +28,34 @@ export async function searchBooks(
       );
     }
 
+    const mainCat: string[] = (() => {
+      if (options.category === "audiobook") return [MAIN_CAT_AUDIOBOOK];
+      if (options.category === "ebook") return [MAIN_CAT_EBOOK];
+      return [];
+    })();
+
+    const torPayload: Record<string, unknown> = {
+      text: query,
+      srchIn: {
+        title: "true",
+        author: "true",
+        narrator: "true",
+        series: "true",
+        tags: "true",
+      },
+      searchType: "all",
+      searchIn: "torrents",
+      cat: ["0"],
+      sortType: sortType,
+      startNumber: startNumber.toString(),
+    };
+    if (mainCat.length > 0) torPayload.main_cat = mainCat;
+    if (options.tag) torPayload.tags = options.tag;
+
     // Construct the JSON search payload
     const searchPayload = {
       dlLink: "",
-      tor: {
-        text: query,
-        srchIn: {
-          title: "true",
-          author: "true",
-          narrator: "true",
-          series: "true",
-          tags: "true",
-        },
-        searchType: "all",
-        searchIn: "torrents",
-        cat: ["0"],
-        sortType: sortType,
-        startNumber: startNumber.toString(),
-      },
+      tor: torPayload,
       thumbnail: "true",
     };
 

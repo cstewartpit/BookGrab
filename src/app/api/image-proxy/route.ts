@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerEnvVariables } from "@/lib/env";
+import { getToken } from "@/lib/mam-session";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -13,10 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get MAM token from request header (sent by client) or fall back to env
-    const mamToken = request.headers.get("x-mam-token");
-    const { MAM_TOKEN: envToken } = getServerEnvVariables();
-    const MAM_TOKEN = mamToken || envToken;
+    const MAM_TOKEN = await getToken();
 
     console.log("Fetching image from:", url);
 
@@ -77,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     // For direct image URLs (fallback)
     const imageUrl = new URL(url);
-    const headers = {
+    const headers: Record<string, string> = {
       "User-Agent": "BookGrab/1.0",
       Referer: "https://www.myanonamouse.net/",
       Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",

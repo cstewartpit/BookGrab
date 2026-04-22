@@ -1,20 +1,32 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
-interface KeepaliveStatus {
-  lastCheck: string | null;
-  success: boolean;
-  message: string | null;
-  error: string | null;
-}
+export type KeepaliveStatus = {
+  tokenPresent: boolean;
+  lastPingAt: string | null;
+  lastPingOk: boolean | null;
+  lastMessage: string | null;
+  lastError: string | null;
+  nextPingAt: string | null;
+  intervalMinutes: number;
+};
 
 interface SettingsContextType {
-  mamToken: string;
-  setMamToken: (token: string) => void;
-  clearMamToken: () => void;
-  keepaliveStatus: KeepaliveStatus;
-  triggerKeepalive: () => Promise<void>;
+  status: KeepaliveStatus | null;
+  refreshStatus: () => Promise<void>;
+  saveToken: (token: string) => Promise<{ success: boolean; error?: string }>;
+  clearToken: () => Promise<void>;
+  pingNow: () => Promise<void>;
+  pingInFlight: boolean;
+  pollOn: boolean;
+  setPollOn: (on: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(
@@ -22,112 +34,104 @@ const SettingsContext = createContext<SettingsContextType | undefined>(
 );
 
 export const useSettings = () => {
-  const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error("useSettings must be used within a SettingsProvider");
-  }
-  return context;
+  const ctx = useContext(SettingsContext);
+  if (!ctx) throw new Error("useSettings must be used within SettingsProvider");
+  return ctx;
 };
-
-// Keepalive interval: 55 minutes (just under 1 hour to be safe)
-const KEEPALIVE_INTERVAL = 55 * 60 * 1000;
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [mamToken, setMamTokenState] = useState<string>("");
-  const [keepaliveStatus, setKeepaliveStatus] = useState<KeepaliveStatus>({
-    lastCheck: null,
-    success: false,
-    message: null,
-    error: null,
-  });
+  const [status, setStatus] = useState<KeepaliveStatus | null>(null);
+  const [pingInFlight, setPingInFlight] = useState(false);
+  const [pollOn, setPollOn] = useState(false);
 
-  // Load MAM token from localStorage on mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem("mam_token");
-    if (storedToken) {
-      setMamTokenState(storedToken);
+  const refreshStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/keepalive-status");
+      const data = (await res.json()) as KeepaliveStatus;
+      setStatus(data);
+    } catch (err) {
+      console.error("Failed to fetch keepalive status:", err);
     }
   }, []);
 
-  const triggerKeepalive = useCallback(async () => {
-    if (!mamToken) {
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/mam-keepalive", {
-        method: "POST",
-        headers: {
-          "x-mam-token": mamToken,
-        },
-      });
-
-      const data = await response.json();
-
-      setKeepaliveStatus({
-        lastCheck: new Date().toISOString(),
-        success: data.success,
-        message: data.message || null,
-        error: data.error || null,
-      });
-
-      if (data.success) {
-        console.log("MAM session keepalive successful:", data.message);
-      } else {
-        console.warn("MAM session keepalive failed:", data.error);
+  const saveToken = useCallback(
+    async (token: string) => {
+      try {
+        const res = await fetch("/api/settings/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return { success: false, error: data.error || "Failed to save" };
+        }
+        if (data.status) setStatus(data.status);
+        else await refreshStatus();
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Network error",
+        };
       }
-    } catch (error) {
-      console.error("MAM keepalive request failed:", error);
-      setKeepaliveStatus({
-        lastCheck: new Date().toISOString(),
-        success: false,
-        message: null,
-        error: error instanceof Error ? error.message : "Network error",
-      });
-    }
-  }, [mamToken]);
+    },
+    [refreshStatus],
+  );
 
-  // Run keepalive when token changes and periodically
+  const clearToken = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/token", { method: "DELETE" });
+      const data = await res.json();
+      if (data.status) setStatus(data.status);
+      else await refreshStatus();
+    } catch (err) {
+      console.error("Failed to clear token:", err);
+    }
+  }, [refreshStatus]);
+
+  const pingNow = useCallback(async () => {
+    setPingInFlight(true);
+    try {
+      const res = await fetch("/api/keepalive-run", { method: "POST" });
+      const data = (await res.json()) as KeepaliveStatus;
+      setStatus(data);
+    } catch (err) {
+      console.error("Ping failed:", err);
+    } finally {
+      setPingInFlight(false);
+    }
+  }, []);
+
+  // Fetch once on mount so components know token state.
   useEffect(() => {
-    if (!mamToken) {
-      return;
-    }
+    void refreshStatus();
+  }, [refreshStatus]);
 
-    // Run immediately when token is set
-    triggerKeepalive();
-
-    // Set up periodic keepalive (every 55 minutes)
-    const interval = setInterval(triggerKeepalive, KEEPALIVE_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [mamToken, triggerKeepalive]);
-
-  const setMamToken = (token: string) => {
-    setMamTokenState(token);
-    localStorage.setItem("mam_token", token);
-  };
-
-  const clearMamToken = () => {
-    setMamTokenState("");
-    localStorage.removeItem("mam_token");
-    setKeepaliveStatus({
-      lastCheck: null,
-      success: false,
-      message: null,
-      error: null,
-    });
-  };
+  // Poll every 60s while a consumer (e.g. Settings modal) has opted in.
+  useEffect(() => {
+    if (!pollOn) return;
+    const id = setInterval(() => {
+      void refreshStatus();
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [pollOn, refreshStatus]);
 
   return (
-    <SettingsContext.Provider value={{
-      mamToken,
-      setMamToken,
-      clearMamToken,
-      keepaliveStatus,
-      triggerKeepalive
-    }}>
+    <SettingsContext.Provider
+      value={{
+        status,
+        refreshStatus,
+        saveToken,
+        clearToken,
+        pingNow,
+        pingInFlight,
+        pollOn,
+        setPollOn,
+      }}
+    >
       {children}
     </SettingsContext.Provider>
   );

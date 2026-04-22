@@ -37,6 +37,9 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Create data directory for server-side MAM session store
+RUN mkdir -p /data && chown -R nextjs:nodejs /data
+
 # Set proper permissions
 RUN chown -R nextjs:nodejs /app
 
@@ -48,6 +51,9 @@ EXPOSE 3000
 
 # Environment variables will be passed at runtime
 ENV PORT=3000
+ENV DATA_DIR=/data
+
+VOLUME ["/data"]
 
 # Start the application
 CMD ["node", "server.js"]

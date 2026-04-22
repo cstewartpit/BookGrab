@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
@@ -10,9 +10,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "BookGrab - Search and Download Books",
+  title: "BookGrab - Browse and Download Books",
   description:
-    "Search for books using MyAnonyMouse's RSS search and download them directly to your Transmission client.",
+    "Browse MyAnonyMouse and download books directly to your Transmission client.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -23,8 +23,13 @@ export const metadata: Metadata = {
       { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
+};
+
+export const viewport: Viewport = {
   themeColor: "#000000",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({

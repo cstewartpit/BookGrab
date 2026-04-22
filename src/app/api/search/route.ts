@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchBooks } from "@/lib/mam-api";
+import { getToken } from "@/lib/mam-session";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -15,8 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get MAM token from request header (sent by client)
-    const mamToken = request.headers.get("x-mam-token") || undefined;
+    const mamToken = (await getToken()) || undefined;
     const result = await searchBooks(query, mamToken, startNumber, sortType);
     return NextResponse.json(result);
   } catch (error) {

@@ -23,8 +23,6 @@ export type KeepaliveStatus = {
 const INTERVAL_MS = 30 * 60 * 1000;
 const BROWSE_CACHE_TTL_MS = 60 * 1000;
 const DYNAMIC_SEEDBOX_URL = "https://t.myanonamouse.net/json/dynamicSeedbox.php";
-const SUCCESS_MARKERS = ["Completed", "No Change"];
-const KNOWN_ERROR_MARKERS = ["No Session Cookie", "Incorrect session type"];
 
 const empty: SessionFile = {
   token: null,
@@ -160,9 +158,24 @@ export async function pingMam(): Promise<KeepaliveStatus> {
       },
     });
     const text = await res.text();
-    const isKnownError = KNOWN_ERROR_MARKERS.some((m) => text.includes(m));
-    const isSuccess =
-      res.ok && !isKnownError && SUCCESS_MARKERS.some((m) => text.includes(m));
+
+    // MAM's dynamicSeedbox.php returns JSON like:
+    //   {"Success":true,"msg":"Completed"}    - IP updated
+    //   {"Success":true,"msg":"No change"}    - IP already current
+    //   {"Success":false,"msg":"Invalid session - Other"}
+    //   {"Success":false,"msg":"Incorrect session type"}
+    // Primary truth is the Success boolean; fall back to substring match for
+    // older/plaintext responses.
+    let isSuccess = false;
+    try {
+      const parsed = JSON.parse(text) as { Success?: boolean; msg?: string };
+      if (typeof parsed.Success === "boolean") {
+        isSuccess = res.ok && parsed.Success;
+      }
+    } catch {
+      isSuccess =
+        res.ok && /\b(Completed|No change)\b/i.test(text);
+    }
 
     state.session.lastPingAt = now;
     state.session.lastPingOk = isSuccess;

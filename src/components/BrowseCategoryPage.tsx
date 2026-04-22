@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Book } from "@/types";
@@ -50,9 +49,12 @@ const CATEGORY_TITLES: Record<Category, string> = {
 };
 
 function buildUrl(cat: Category, sort: string, tag?: string): string {
-  const params = new URLSearchParams({ view: "browse", cat, sort });
+  const params = new URLSearchParams();
+  if (cat !== "all") params.set("cat", cat);
+  if (sort !== "seeds") params.set("sort", sort);
   if (tag) params.set("tag", tag);
-  return `/?${params.toString()}`;
+  const qs = params.toString();
+  return qs ? `/?${qs}` : "/";
 }
 
 export default function BrowseCategoryPage({
@@ -150,36 +152,31 @@ export default function BrowseCategoryPage({
         margin: "0 auto",
       }}
     >
-      <div
+      <h1
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "16px",
+          fontSize: "22px",
+          fontWeight: 700,
+          color: "#f1f5f9",
+          margin: "0 0 16px",
         }}
       >
-        <Link
-          href="/"
-          style={{
-            color: "#60a5fa",
-            fontSize: "14px",
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
-          ← Home
-        </Link>
-        <h1
-          style={{
-            fontSize: "22px",
-            fontWeight: 700,
-            color: "#f1f5f9",
-            margin: 0,
-          }}
-        >
-          {CATEGORY_TITLES[category]}
-        </h1>
-      </div>
+        {CATEGORY_TITLES[category]}
+        {activeTag && (
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#94a3b8",
+              marginLeft: "10px",
+            }}
+          >
+            tagged{" "}
+            <span style={{ color: "#93c5fd", textTransform: "capitalize" }}>
+              {activeTag}
+            </span>
+          </span>
+        )}
+      </h1>
 
       {/* Filter bar */}
       <div

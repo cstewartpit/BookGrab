@@ -2,7 +2,6 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import BrowseHome from "@/components/BrowseHome";
 import BrowseCategoryPage from "@/components/BrowseCategoryPage";
 import SearchOverlay from "@/components/SearchOverlay";
 import SettingsModal from "@/components/SettingsModal";
@@ -153,7 +152,6 @@ function Header({
 
 function HomeContent() {
   const sp = useSearchParams();
-  const view = sp.get("view");
   const rawCat = sp.get("cat");
   const cat: "audiobook" | "ebook" | "all" =
     rawCat === "audiobook" || rawCat === "ebook" || rawCat === "all"
@@ -177,15 +175,12 @@ function HomeContent() {
         onSettingsClick={() => setSettingsOpen(true)}
       />
 
-      {view === "browse" ? (
-        <BrowseCategoryPage
-          category={cat}
-          initialSort={sort}
-          initialTag={tag}
-        />
-      ) : (
-        <BrowseHome />
-      )}
+      <BrowseCategoryPage
+        category={cat}
+        initialSort={sort}
+        initialTag={tag}
+      />
+
 
       <footer
         style={{

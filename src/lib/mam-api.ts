@@ -34,8 +34,14 @@ export async function searchBooks(
       return [];
     })();
 
+    // MAM doesn't accept a distinct "tags" filter on this endpoint — it runs
+    // a single text query across the fields named in srchIn. So to filter
+    // browse results by genre/tag, fold the tag into the text query and let
+    // srchIn.tags do the matching.
+    const text = [query, options.tag].filter(Boolean).join(" ").trim();
+
     const torPayload: Record<string, unknown> = {
-      text: query,
+      text,
       srchIn: {
         title: "true",
         author: "true",
@@ -50,7 +56,6 @@ export async function searchBooks(
       startNumber: startNumber.toString(),
     };
     if (mainCat.length > 0) torPayload.main_cat = mainCat;
-    if (options.tag) torPayload.tags = options.tag;
 
     // Construct the JSON search payload
     const searchPayload = {

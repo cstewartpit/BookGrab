@@ -153,7 +153,12 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
       </div>
       <div style={{ padding: "16px", maxWidth: "800px", margin: "0 auto" }}>
         {hasSearched && (
-          <BookList books={filteredBooks} isLoading={loading} error={error} />
+          <BookList
+            books={filteredBooks}
+            isLoading={loading}
+            error={error}
+            layout="list"
+          />
         )}
         {!hasSearched && (
           <div

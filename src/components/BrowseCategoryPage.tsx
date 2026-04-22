@@ -1,42 +1,88 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Book } from "@/types";
 import BookList from "./BookList";
 
+type Category = "audiobook" | "ebook" | "all";
+
 interface BrowseCategoryPageProps {
-  category: "audiobook" | "ebook" | "all";
+  category: Category;
   initialSort: string;
+  initialTag?: string;
 }
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "seeds", label: "Most Seeders" },
-  { value: "date", label: "Newest" },
   { value: "times_completed", label: "Most Grabbed" },
+  { value: "date", label: "Newest" },
   { value: "size", label: "Largest" },
   { value: "name", label: "Name A-Z" },
 ];
 
+const CATEGORY_OPTIONS: { value: Category; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "audiobook", label: "Audiobooks" },
+  { value: "ebook", label: "Ebooks" },
+];
+
+const TAG_SUGGESTIONS = [
+  "fantasy",
+  "science fiction",
+  "mystery",
+  "thriller",
+  "romance",
+  "history",
+  "biography",
+  "non-fiction",
+  "horror",
+  "young adult",
+];
+
 const PAGE_SIZE = 20;
 
-const CATEGORY_TITLES: Record<BrowseCategoryPageProps["category"], string> = {
+const CATEGORY_TITLES: Record<Category, string> = {
   audiobook: "Audiobooks",
   ebook: "Ebooks",
   all: "All Books",
 };
 
+function buildUrl(cat: Category, sort: string, tag?: string): string {
+  const params = new URLSearchParams({ view: "browse", cat, sort });
+  if (tag) params.set("tag", tag);
+  return `/?${params.toString()}`;
+}
+
 export default function BrowseCategoryPage({
   category,
   initialSort,
+  initialTag,
 }: BrowseCategoryPageProps) {
+  const router = useRouter();
   const [sort, setSort] = useState(initialSort);
+  const [tagInput, setTagInput] = useState(initialTag ?? "");
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+
+  const activeTag = (initialTag || "").trim();
+
+  useEffect(() => {
+    setSort(initialSort);
+  }, [initialSort]);
+
+  useEffect(() => {
+    setTagInput(initialTag ?? "");
+  }, [initialTag]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [category, initialSort, initialTag]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,9 +91,13 @@ export default function BrowseCategoryPage({
     const start = (page - 1) * PAGE_SIZE;
     (async () => {
       try {
-        const res = await fetch(
-          `/api/browse?cat=${category}&sort=${sort}&start=${start}`,
-        );
+        const params = new URLSearchParams({
+          cat: category,
+          sort,
+          start: String(start),
+        });
+        if (activeTag) params.set("tag", activeTag);
+        const res = await fetch(`/api/browse?${params.toString()}`);
         const data = await res.json();
         if (cancelled) return;
         if (!res.ok) {
@@ -69,12 +119,37 @@ export default function BrowseCategoryPage({
     return () => {
       cancelled = true;
     };
-  }, [category, sort, page]);
+  }, [category, sort, page, activeTag]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
 
+  const changeCategory = (cat: Category) => {
+    router.push(buildUrl(cat, sort, activeTag || undefined));
+  };
+
+  const changeSort = (newSort: string) => {
+    setSort(newSort);
+    router.replace(buildUrl(category, newSort, activeTag || undefined));
+  };
+
+  const applyTag = () => {
+    const t = tagInput.trim();
+    router.replace(buildUrl(category, sort, t || undefined));
+  };
+
+  const clearTag = () => {
+    setTagInput("");
+    router.replace(buildUrl(category, sort, undefined));
+  };
+
   return (
-    <div style={{ padding: "16px", maxWidth: "800px", margin: "0 auto" }}>
+    <div
+      style={{
+        padding: "16px",
+        maxWidth: "1100px",
+        margin: "0 auto",
+      }}
+    >
       <div
         style={{
           display: "flex",
@@ -88,7 +163,7 @@ export default function BrowseCategoryPage({
           style={{
             color: "#60a5fa",
             fontSize: "14px",
-            fontWeight: "600",
+            fontWeight: 600,
             textDecoration: "none",
           }}
         >
@@ -97,7 +172,7 @@ export default function BrowseCategoryPage({
         <h1
           style={{
             fontSize: "22px",
-            fontWeight: "700",
+            fontWeight: 700,
             color: "#f1f5f9",
             margin: 0,
           }}
@@ -106,22 +181,76 @@ export default function BrowseCategoryPage({
         </h1>
       </div>
 
-      <div style={{ marginBottom: "16px" }}>
+      {/* Filter bar */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "80px 1fr",
+          alignItems: "center",
+          gap: "10px 12px",
+          marginBottom: "16px",
+          padding: "14px",
+          background: "#1e293b",
+          border: "1px solid #334155",
+          borderRadius: "10px",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: 600,
+            color: "#94a3b8",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          Type
+        </span>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          {CATEGORY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => changeCategory(opt.value)}
+              style={{
+                padding: "6px 14px",
+                background: category === opt.value ? "#3b82f6" : "#0f172a",
+                border: "1px solid #334155",
+                borderRadius: "999px",
+                color: "#e2e8f0",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: 600,
+            color: "#94a3b8",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          Sort
+        </span>
         <select
           value={sort}
-          onChange={(e) => {
-            setSort(e.target.value);
-            setPage(1);
-          }}
+          onChange={(e) => changeSort(e.target.value)}
           style={{
-            width: "100%",
-            padding: "12px 16px",
+            padding: "8px 12px",
             background: "#0f172a",
             border: "1px solid #334155",
             borderRadius: "8px",
             color: "#e2e8f0",
-            fontSize: "14px",
-            fontWeight: "500",
+            fontSize: "13px",
+            fontWeight: 500,
+            width: "100%",
+            maxWidth: "260px",
           }}
         >
           {SORT_OPTIONS.map((opt) => (
@@ -130,25 +259,136 @@ export default function BrowseCategoryPage({
             </option>
           ))}
         </select>
+
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: 600,
+            color: "#94a3b8",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          Genre
+        </span>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applyTag();
+              }}
+              placeholder="fantasy, mystery, biography..."
+              style={{
+                flex: 1,
+                minWidth: "180px",
+                padding: "8px 12px",
+                background: "#0f172a",
+                border: "1px solid #334155",
+                borderRadius: "8px",
+                color: "#e2e8f0",
+                fontSize: "13px",
+              }}
+            />
+            <button
+              onClick={applyTag}
+              style={{
+                padding: "8px 14px",
+                background: "#3b82f6",
+                border: "none",
+                borderRadius: "8px",
+                color: "#fff",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Apply
+            </button>
+            {activeTag && (
+              <button
+                onClick={clearTag}
+                style={{
+                  padding: "8px 14px",
+                  background: "transparent",
+                  border: "1px solid #334155",
+                  borderRadius: "8px",
+                  color: "#94a3b8",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+            {TAG_SUGGESTIONS.map((t) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setTagInput(t);
+                  router.replace(buildUrl(category, sort, t));
+                }}
+                style={{
+                  padding: "3px 10px",
+                  background:
+                    activeTag.toLowerCase() === t ? "#1e3a8a" : "#0f172a",
+                  border: "1px solid #334155",
+                  borderRadius: "999px",
+                  color:
+                    activeTag.toLowerCase() === t ? "#93c5fd" : "#64748b",
+                  fontSize: "11px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  textTransform: "capitalize",
+                }}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {!loading && !error && totalResults > 0 && (
         <div
           style={{
-            marginBottom: "12px",
-            padding: "10px 14px",
+            marginBottom: "10px",
+            padding: "8px 14px",
             background: "#1e293b",
             borderRadius: "8px",
             border: "1px solid #334155",
-            fontSize: "13px",
+            fontSize: "12.5px",
             color: "#94a3b8",
           }}
         >
-          Page {page} of {totalPages} · {totalResults.toLocaleString()} total
+          Page {page} of {totalPages} · {totalResults.toLocaleString()} result
+          {totalResults === 1 ? "" : "s"}
+          {activeTag && (
+            <>
+              {" "}
+              · tag <strong style={{ color: "#93c5fd" }}>{activeTag}</strong>
+            </>
+          )}
         </div>
       )}
 
-      <BookList books={books} isLoading={loading} error={error} />
+      <BookList
+        books={books}
+        isLoading={loading}
+        error={error}
+        layout="list"
+      />
 
       {totalPages > 1 && !loading && !error && (
         <div
@@ -157,7 +397,7 @@ export default function BrowseCategoryPage({
             justifyContent: "center",
             alignItems: "center",
             gap: "8px",
-            marginTop: "24px",
+            marginTop: "20px",
             flexWrap: "wrap",
           }}
         >
@@ -165,14 +405,14 @@ export default function BrowseCategoryPage({
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
             style={{
-              padding: "10px 18px",
+              padding: "9px 16px",
               background: page === 1 ? "#1e293b" : "#3b82f6",
               border: "1px solid #334155",
               borderRadius: "8px",
               color: page === 1 ? "#64748b" : "#fff",
               cursor: page === 1 ? "not-allowed" : "pointer",
-              fontWeight: "600",
-              fontSize: "14px",
+              fontWeight: 600,
+              fontSize: "13px",
               opacity: page === 1 ? 0.5 : 1,
             }}
           >
@@ -185,14 +425,14 @@ export default function BrowseCategoryPage({
             onClick={() => setPage((p) => p + 1)}
             disabled={!hasMore}
             style={{
-              padding: "10px 18px",
+              padding: "9px 16px",
               background: !hasMore ? "#1e293b" : "#3b82f6",
               border: "1px solid #334155",
               borderRadius: "8px",
               color: !hasMore ? "#64748b" : "#fff",
               cursor: !hasMore ? "not-allowed" : "pointer",
-              fontWeight: "600",
-              fontSize: "14px",
+              fontWeight: 600,
+              fontSize: "13px",
               opacity: !hasMore ? 0.5 : 1,
             }}
           >

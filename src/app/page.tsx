@@ -160,6 +160,7 @@ function HomeContent() {
       ? rawCat
       : "all";
   const sort = sp.get("sort") || "seeds";
+  const tag = sp.get("tag") || undefined;
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -177,7 +178,11 @@ function HomeContent() {
       />
 
       {view === "browse" ? (
-        <BrowseCategoryPage category={cat} initialSort={sort} />
+        <BrowseCategoryPage
+          category={cat}
+          initialSort={sort}
+          initialTag={tag}
+        />
       ) : (
         <BrowseHome />
       )}

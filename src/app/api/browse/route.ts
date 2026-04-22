@@ -37,9 +37,10 @@ export async function GET(request: NextRequest) {
   const sort = ALLOWED_SORTS.has(rawSort) ? rawSort : DEFAULT_SORT;
   const start = Math.max(0, parseInt(sp.get("start") || "0", 10));
   const tag = sp.get("tag")?.trim() || undefined;
+  const query = sp.get("q")?.trim() || "";
   const noCache = sp.get("noCache") === "1";
 
-  const cacheKey = JSON.stringify({ category, sort, start, tag });
+  const cacheKey = JSON.stringify({ category, sort, start, tag, query });
   if (!noCache) {
     const cached = getCachedBrowse(cacheKey);
     if (cached) {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const token = (await getToken()) || undefined;
-    const result = await searchBooks("", token, start, sort, {
+    const result = await searchBooks(query, token, start, sort, {
       category,
       tag,
     });

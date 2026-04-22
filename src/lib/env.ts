@@ -17,5 +17,9 @@ export const getServerEnvVariables = () => {
     AUDIOBOOK_DESTINATION_PATH: getEnvVariable("AUDIOBOOK_DESTINATION_PATH"),
     EBOOK_DESTINATION_PATH: getEnvVariable("EBOOK_DESTINATION_PATH"),
     DATA_DIR: getOptionalEnvVariable("DATA_DIR"),
+    CALIBRE_WEB_URL: getOptionalEnvVariable("CALIBRE_WEB_URL"),
+    CALIBRE_WEB_AUTH_EMAIL: getOptionalEnvVariable("CALIBRE_WEB_AUTH_EMAIL"),
+    AUDIOBOOKSHELF_URL: getOptionalEnvVariable("AUDIOBOOKSHELF_URL"),
+    AUDIOBOOKSHELF_TOKEN: getOptionalEnvVariable("AUDIOBOOKSHELF_TOKEN"),
   };
 };

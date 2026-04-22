@@ -3,14 +3,11 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import BrowseCategoryPage from "@/components/BrowseCategoryPage";
-import SearchOverlay from "@/components/SearchOverlay";
 import SettingsModal from "@/components/SettingsModal";
 
 function Header({
-  onSearchClick,
   onSettingsClick,
 }: {
-  onSearchClick: () => void;
   onSettingsClick: () => void;
 }) {
   return (
@@ -86,33 +83,6 @@ function Header({
 
         <div style={{ display: "flex", gap: "4px" }}>
           <button
-            onClick={onSearchClick}
-            aria-label="Search"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#cbd5e1",
-              padding: "8px",
-              cursor: "pointer",
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </button>
-          <button
             onClick={onSettingsClick}
             aria-label="Settings"
             style={{
@@ -159,7 +129,7 @@ function HomeContent() {
       : "all";
   const sort = sp.get("sort") || "seedersDesc";
   const tag = sp.get("tag") || undefined;
-  const [searchOpen, setSearchOpen] = useState(false);
+  const query = sp.get("q") || undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
@@ -170,15 +140,13 @@ function HomeContent() {
         color: "#e2e8f0",
       }}
     >
-      <Header
-        onSearchClick={() => setSearchOpen(true)}
-        onSettingsClick={() => setSettingsOpen(true)}
-      />
+      <Header onSettingsClick={() => setSettingsOpen(true)} />
 
       <BrowseCategoryPage
         category={cat}
         initialSort={sort}
         initialTag={tag}
+        initialQuery={query}
       />
 
 
@@ -195,10 +163,6 @@ function HomeContent() {
         BookGrab &copy; {new Date().getFullYear()}
       </footer>
 
-      <SearchOverlay
-        isOpen={searchOpen}
-        onClose={() => setSearchOpen(false)}
-      />
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}

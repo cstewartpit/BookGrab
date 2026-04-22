@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Book } from "@/types";
+import ActivityStrip from "./ActivityStrip";
 import BookList from "./BookList";
 
 type Category = "audiobook" | "ebook" | "all";
@@ -11,11 +12,12 @@ interface BrowseCategoryPageProps {
   category: Category;
   initialSort: string;
   initialTag?: string;
+  initialQuery?: string;
 }
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: "seedersDesc", label: "Most Seeders" },
-  { value: "snatchedDesc", label: "Most Grabbed" },
+  { value: "seedersDesc", label: "Most Available" },
+  { value: "snatchedDesc", label: "Most Popular" },
   { value: "dateDesc", label: "Newest" },
   { value: "dateAsc", label: "Oldest" },
   { value: "sizeDesc", label: "Largest" },
@@ -53,11 +55,17 @@ const CATEGORY_TITLES: Record<Category, string> = {
   all: "All Books",
 };
 
-function buildUrl(cat: Category, sort: string, tag?: string): string {
+function buildUrl(
+  cat: Category,
+  sort: string,
+  tag?: string,
+  query?: string,
+): string {
   const params = new URLSearchParams();
   if (cat !== "all") params.set("cat", cat);
   if (sort !== DEFAULT_SORT) params.set("sort", sort);
   if (tag) params.set("tag", tag);
+  if (query) params.set("q", query);
   const qs = params.toString();
   return qs ? `/?${qs}` : "/";
 }
@@ -66,6 +74,7 @@ export default function BrowseCategoryPage({
   category,
   initialSort,
   initialTag,
+  initialQuery,
 }: BrowseCategoryPageProps) {
   const router = useRouter();
   const [sort, setSort] = useState(initialSort);
@@ -75,16 +84,33 @@ export default function BrowseCategoryPage({
   const [page, setPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [queryInput, setQueryInput] = useState(initialQuery || "");
 
   const activeTag = (initialTag || "").trim();
+  const activeQuery = (initialQuery || "").trim();
 
   useEffect(() => {
     setSort(initialSort);
   }, [initialSort]);
 
   useEffect(() => {
+    setQueryInput(initialQuery || "");
+  }, [initialQuery]);
+
+  useEffect(() => {
+    const next = queryInput.trim();
+    if (next === activeQuery) return;
+    const timer = setTimeout(() => {
+      router.replace(
+        buildUrl(category, sort, activeTag || undefined, next || undefined),
+      );
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [queryInput, activeQuery, category, sort, activeTag, router]);
+
+  useEffect(() => {
     setPage(1);
-  }, [category, initialSort, initialTag]);
+  }, [category, initialSort, initialTag, initialQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +125,7 @@ export default function BrowseCategoryPage({
           start: String(start),
         });
         if (activeTag) params.set("tag", activeTag);
+        if (activeQuery) params.set("q", activeQuery);
         const res = await fetch(`/api/browse?${params.toString()}`);
         const data = await res.json();
         if (cancelled) return;
@@ -121,17 +148,21 @@ export default function BrowseCategoryPage({
     return () => {
       cancelled = true;
     };
-  }, [category, sort, page, activeTag]);
+  }, [category, sort, page, activeTag, activeQuery]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / PAGE_SIZE));
 
   const changeCategory = (cat: Category) => {
-    router.push(buildUrl(cat, sort, activeTag || undefined));
+    router.push(
+      buildUrl(cat, sort, activeTag || undefined, activeQuery || undefined),
+    );
   };
 
   const changeSort = (newSort: string) => {
     setSort(newSort);
-    router.replace(buildUrl(category, newSort, activeTag || undefined));
+    router.replace(
+      buildUrl(category, newSort, activeTag || undefined, activeQuery || undefined),
+    );
   };
 
   return (
@@ -151,6 +182,19 @@ export default function BrowseCategoryPage({
         }}
       >
         {CATEGORY_TITLES[category]}
+        {activeQuery && (
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: 500,
+              color: "#94a3b8",
+              marginLeft: "10px",
+            }}
+          >
+            matching{" "}
+            <span style={{ color: "#93c5fd" }}>“{activeQuery}”</span>
+          </span>
+        )}
         {activeTag && (
           <span
             style={{
@@ -168,6 +212,8 @@ export default function BrowseCategoryPage({
         )}
       </h1>
 
+      <ActivityStrip />
+
       {/* Filter bar */}
       <div
         style={{
@@ -182,6 +228,79 @@ export default function BrowseCategoryPage({
           borderRadius: "10px",
         }}
       >
+        <span
+          style={{
+            fontSize: "12px",
+            fontWeight: 600,
+            color: "#94a3b8",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          Search
+        </span>
+        <div style={{ position: "relative", width: "100%", maxWidth: "420px" }}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="#64748b"
+            strokeWidth={2}
+            style={{
+              position: "absolute",
+              left: "10px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+            }}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="text"
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
+            placeholder="Title, author, narrator, series…"
+            style={{
+              width: "100%",
+              padding: "8px 34px 8px 32px",
+              background: "#0f172a",
+              border: "1px solid #334155",
+              borderRadius: "8px",
+              color: "#e2e8f0",
+              fontSize: "13px",
+              outline: "none",
+            }}
+          />
+          {queryInput && (
+            <button
+              onClick={() => setQueryInput("")}
+              aria-label="Clear search"
+              style={{
+                position: "absolute",
+                right: "6px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "transparent",
+                border: "none",
+                color: "#94a3b8",
+                cursor: "pointer",
+                padding: "4px 8px",
+                fontSize: "14px",
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
         <span
           style={{
             fontSize: "12px",
@@ -266,7 +385,12 @@ export default function BrowseCategoryPage({
                 key={t}
                 onClick={() => {
                   router.replace(
-                    buildUrl(category, sort, selected ? undefined : t),
+                    buildUrl(
+                      category,
+                      sort,
+                      selected ? undefined : t,
+                      activeQuery || undefined,
+                    ),
                   );
                 }}
                 style={{

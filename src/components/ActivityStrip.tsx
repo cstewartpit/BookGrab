@@ -90,14 +90,25 @@ export default function ActivityStrip() {
           count={downloading.length}
           accent="#3b82f6"
         >
-          {downloading.map((t) => (
-            <Chip
-              key={t.name}
-              title={t.name}
-              subtitle={downloadingLabel(t)}
-              accent="#3b82f6"
-            />
-          ))}
+          {downloading.map((t) => {
+            const dir = t.downloadDir || "";
+            const category: "audiobook" | "ebook" | undefined = dir.includes(
+              "audiobook",
+            )
+              ? "audiobook"
+              : dir.includes("ebook")
+                ? "ebook"
+                : undefined;
+            return (
+              <Chip
+                key={`${dir}-${t.name}`}
+                title={t.name}
+                subtitle={downloadingLabel(t)}
+                accent="#3b82f6"
+                category={category}
+              />
+            );
+          })}
         </Section>
       )}
       {recentlyAdded.length > 0 && (
@@ -115,10 +126,11 @@ export default function ActivityStrip() {
               : relative(g.at);
             return (
               <Chip
-                key={`${g.at}-${g.title}`}
+                key={`${g.at}-${g.category}-${g.title}`}
                 title={g.title}
                 subtitle={subtitle}
                 accent={inLib ? "#10b981" : "#64748b"}
+                category={g.category}
               />
             );
           })}
@@ -193,10 +205,12 @@ function Chip({
   title,
   subtitle,
   accent,
+  category,
 }: {
   title: string;
   subtitle: string;
   accent: string;
+  category?: "audiobook" | "ebook";
 }) {
   return (
     <div
@@ -215,18 +229,44 @@ function Chip({
         gap: "2px",
       }}
     >
-      <span
+      <div
         style={{
-          color: "#e2e8f0",
-          fontSize: "12.5px",
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          minWidth: 0,
         }}
       >
-        {title}
-      </span>
+        {category && (
+          <span
+            style={{
+              flex: "0 0 auto",
+              padding: "1px 5px",
+              borderRadius: "3px",
+              fontSize: "9.5px",
+              fontWeight: 700,
+              letterSpacing: "0.3px",
+              background: category === "audiobook" ? "#1e3a8a" : "#065f46",
+              color: category === "audiobook" ? "#93c5fd" : "#6ee7b7",
+            }}
+          >
+            {category === "audiobook" ? "AUD" : "EBK"}
+          </span>
+        )}
+        <span
+          style={{
+            color: "#e2e8f0",
+            fontSize: "12.5px",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            minWidth: 0,
+          }}
+        >
+          {title}
+        </span>
+      </div>
       <span
         style={{
           color: accent,

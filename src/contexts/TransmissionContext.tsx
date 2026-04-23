@@ -5,7 +5,6 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
@@ -24,10 +23,14 @@ type TransmissionContextValue = {
   error: string | null;
   refresh: () => Promise<void>;
   /**
-   * Match a MAM book against the current torrent list by title similarity.
+   * Match a MAM book against the current torrent list by title similarity,
+   * restricted to torrents whose downloadDir matches the book's category.
    * Returns the most-complete matching torrent, or null.
    */
-  matchByTitle: (title: string) => TorrentSnapshot | null;
+  matchBook: (
+    title: string,
+    category: "audiobook" | "ebook",
+  ) => TorrentSnapshot | null;
 };
 
 const TransmissionContext = createContext<TransmissionContextValue | undefined>(
@@ -59,6 +62,16 @@ function buildIndex(torrents: TorrentSnapshot[]): Map<string, TorrentSnapshot> {
     map.set(normalize(t.name), t);
   }
   return map;
+}
+
+function matchesCategory(
+  t: TorrentSnapshot,
+  category: "audiobook" | "ebook",
+): boolean {
+  const dir = t.downloadDir || "";
+  return category === "audiobook"
+    ? dir.includes("audiobook")
+    : dir.includes("ebook");
 }
 
 export const TransmissionProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -94,16 +107,19 @@ export const TransmissionProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Pre-build a normalized index so per-row lookups are O(1).
-  const index = useMemo(() => buildIndex(torrents), [torrents]);
-
-  const matchByTitle = useCallback(
-    (title: string): TorrentSnapshot | null => {
+  const matchBook = useCallback(
+    (
+      title: string,
+      category: "audiobook" | "ebook",
+    ): TorrentSnapshot | null => {
       if (!title || torrents.length === 0) return null;
       const needle = normalize(title);
       if (!needle) return null;
-      // Direct normalized-key hit first.
-      const exact = index.get(needle);
+      const pool = torrents.filter((t) => matchesCategory(t, category));
+      if (pool.length === 0) return null;
+      // Direct normalized-key hit first, scoped to the category pool.
+      const scopedIndex = buildIndex(pool);
+      const exact = scopedIndex.get(needle);
       if (exact) return exact;
       // Fallback: substring. MAM titles tend to be shorter than the
       // full torrent name (which includes author / subseries / format),
@@ -111,19 +127,19 @@ export const TransmissionProvider: React.FC<{ children: React.ReactNode }> = ({
       // least 6 chars to avoid matching tiny tokens like "II".
       if (needle.length < 6) return null;
       let best: TorrentSnapshot | null = null;
-      for (const t of torrents) {
+      for (const t of pool) {
         if (normalize(t.name).includes(needle)) {
           if (!best || t.percentDone > best.percentDone) best = t;
         }
       }
       return best;
     },
-    [index, torrents],
+    [torrents],
   );
 
   return (
     <TransmissionContext.Provider
-      value={{ torrents, fetchedAt, error, refresh, matchByTitle }}
+      value={{ torrents, fetchedAt, error, refresh, matchBook }}
     >
       {children}
     </TransmissionContext.Provider>

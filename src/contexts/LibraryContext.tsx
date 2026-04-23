@@ -87,18 +87,28 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       const needle = normalize(title);
       if (!needle || needle.length < 4) return null;
 
+      // When a kind is specified, limit matching to that library strictly —
+      // an ebook-only library hit must not claim the audiobook row.
+      if (preferredKind) {
+        const pool = preferredKind === "audiobook" ? absSet : calibreSet;
+        if (pool.has(needle)) {
+          return { kind: preferredKind, normalized: needle };
+        }
+        if (needle.length < 8) return null;
+        for (const s of pool) {
+          if (s.includes(needle) || needle.includes(s))
+            return { kind: preferredKind, normalized: s };
+        }
+        return null;
+      }
+
       const inCal = calibreSet.has(needle);
       const inAbs = absSet.has(needle);
       if (inCal || inAbs) {
-        const kind: "ebook" | "audiobook" =
-          preferredKind === "audiobook" && inAbs
-            ? "audiobook"
-            : preferredKind === "ebook" && inCal
-              ? "ebook"
-              : inAbs
-                ? "audiobook"
-                : "ebook";
-        return { kind, normalized: needle };
+        return {
+          kind: inAbs ? "audiobook" : "ebook",
+          normalized: needle,
+        };
       }
 
       // Substring fallback for long needles (same strategy as Transmission).

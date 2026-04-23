@@ -78,7 +78,7 @@ function availabilityBadge(seeders: number): {
 }
 
 export default function BookRow({ book }: { book: Book }) {
-  const { matchByTitle, refresh: refreshTransmission } = useTransmission();
+  const { matchBook, refresh: refreshTransmission } = useTransmission();
   const { matchInLibrary } = useLibrary();
   const [isGrabbing, setIsGrabbing] = useState(false);
   const [grabStatus, setGrabStatus] = useState<"idle" | "success" | "error">(
@@ -86,7 +86,7 @@ export default function BookRow({ book }: { book: Book }) {
   );
   const [errorMessage, setErrorMessage] = useState("");
 
-  const tx = matchByTitle(book.title);
+  const tx = matchBook(book.title, book.category);
   const downloadBadge = tx ? torrentBadge(tx) : null;
   const inLibrary = matchInLibrary(book.title, book.category);
   const statusBadge =

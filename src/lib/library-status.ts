@@ -1,12 +1,19 @@
 import { getServerEnvVariables } from "./env";
 
-type LibraryEntry = { title: string; author?: string };
+type LibraryEntry = {
+  title: string;
+  author?: string;
+  /** Deep-link URL into the library's web UI for this specific book. */
+  url?: string;
+};
+
+type NormalizedLookup = { normalized: string; url: string | null };
 
 type LibrarySnapshot = {
   calibre: LibraryEntry[];
   abs: LibraryEntry[];
-  calibreNormalized: string[];
-  absNormalized: string[];
+  calibreNormalized: NormalizedLookup[];
+  absNormalized: NormalizedLookup[];
   fetchedAt: string | null;
   calibreError: string | null;
   absError: string | null;
@@ -47,8 +54,13 @@ export function normalize(s: string): string {
 // --- Calibre-Web ---------------------------------------------------------
 
 async function fetchCalibreTitles(): Promise<LibraryEntry[]> {
-  const { CALIBRE_WEB_URL, CALIBRE_WEB_AUTH_EMAIL } = getServerEnvVariables();
+  const {
+    CALIBRE_WEB_URL,
+    CALIBRE_WEB_AUTH_EMAIL,
+    CALIBRE_WEB_PUBLIC_URL,
+  } = getServerEnvVariables();
   if (!CALIBRE_WEB_URL || !CALIBRE_WEB_AUTH_EMAIL) return [];
+  const publicBase = (CALIBRE_WEB_PUBLIC_URL || "").replace(/\/+$/, "");
 
   const entries: LibraryEntry[] = [];
   const seen = new Set<string>();
@@ -86,10 +98,19 @@ async function fetchCalibreTitles(): Promise<LibraryEntry[]> {
       const authorMatch = block.match(
         /<author>\s*<name>([\s\S]*?)<\/name>/,
       );
+      // The acquisition link carries the Calibre book id, e.g.
+      //   href="/opds/download/123/epub/"
+      // The human-facing detail page is /book/{id} on the same host.
+      const hrefMatch = block.match(
+        /rel="http:\/\/opds-spec\.org\/acquisition"[^>]*href="\/opds\/download\/(\d+)/,
+      );
       if (titleMatch) {
+        const bookId = hrefMatch ? hrefMatch[1] : null;
         entries.push({
           title: decodeEntities(titleMatch[1]).trim(),
           author: authorMatch ? decodeEntities(authorMatch[1]).trim() : undefined,
+          url:
+            bookId && publicBase ? `${publicBase}/book/${bookId}` : undefined,
         });
       }
     }
@@ -126,6 +147,7 @@ function decodeEntities(s: string): string {
 type AbsLibrariesRsp = { libraries: { id: string; mediaType?: string }[] };
 type AbsItemsRsp = {
   results: {
+    id?: string;
     media?: {
       metadata?: {
         title?: string;
@@ -137,8 +159,13 @@ type AbsItemsRsp = {
 };
 
 async function fetchAbsTitles(): Promise<LibraryEntry[]> {
-  const { AUDIOBOOKSHELF_URL, AUDIOBOOKSHELF_TOKEN } = getServerEnvVariables();
+  const {
+    AUDIOBOOKSHELF_URL,
+    AUDIOBOOKSHELF_TOKEN,
+    AUDIOBOOKSHELF_PUBLIC_URL,
+  } = getServerEnvVariables();
   if (!AUDIOBOOKSHELF_URL || !AUDIOBOOKSHELF_TOKEN) return [];
+  const publicBase = (AUDIOBOOKSHELF_PUBLIC_URL || "").replace(/\/+$/, "");
 
   const auth = { Authorization: `Bearer ${AUDIOBOOKSHELF_TOKEN}` };
 
@@ -172,7 +199,12 @@ async function fetchAbsTitles(): Promise<LibraryEntry[]> {
         meta.authorName ||
         meta.authors?.map((a) => a.name).filter(Boolean).join(", ") ||
         undefined;
-      entries.push({ title: meta.title, author });
+      entries.push({
+        title: meta.title,
+        author,
+        url:
+          item.id && publicBase ? `${publicBase}/item/${item.id}` : undefined,
+      });
     }
   }
   return entries;
@@ -193,11 +225,11 @@ async function refreshNow(): Promise<LibrarySnapshot> {
     calibre,
     abs,
     calibreNormalized: calibre
-      .map((e) => normalize(e.title))
-      .filter((s) => s.length > 0),
+      .map((e) => ({ normalized: normalize(e.title), url: e.url ?? null }))
+      .filter((x) => x.normalized.length > 0),
     absNormalized: abs
-      .map((e) => normalize(e.title))
-      .filter((s) => s.length > 0),
+      .map((e) => ({ normalized: normalize(e.title), url: e.url ?? null }))
+      .filter((x) => x.normalized.length > 0),
     fetchedAt: new Date().toISOString(),
     calibreError:
       calibreRes.status === "rejected"

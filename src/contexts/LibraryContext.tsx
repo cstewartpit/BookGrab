@@ -9,9 +9,11 @@ import React, {
   useState,
 } from "react";
 
+type LibraryLookup = { normalized: string; url: string | null };
+
 type LibraryStatusPayload = {
-  calibre: string[];
-  abs: string[];
+  calibre: LibraryLookup[];
+  abs: LibraryLookup[];
   calibreCount?: number;
   absCount?: number;
   fetchedAt: string | null;
@@ -19,7 +21,11 @@ type LibraryStatusPayload = {
   absError: string | null;
 };
 
-type LibraryMatch = { kind: "ebook" | "audiobook"; normalized: string };
+type LibraryMatch = {
+  kind: "ebook" | "audiobook";
+  normalized: string;
+  url: string | null;
+};
 
 type LibraryContextValue = {
   payload: LibraryStatusPayload | null;
@@ -72,11 +78,16 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(id);
   }, [refresh]);
 
-  const calibreSet = useMemo(
-    () => new Set(payload?.calibre ?? []),
-    [payload],
-  );
-  const absSet = useMemo(() => new Set(payload?.abs ?? []), [payload]);
+  const calibreMap = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const e of payload?.calibre ?? []) m.set(e.normalized, e.url);
+    return m;
+  }, [payload]);
+  const absMap = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const e of payload?.abs ?? []) m.set(e.normalized, e.url);
+    return m;
+  }, [payload]);
 
   const matchInLibrary = useCallback(
     (
@@ -90,40 +101,47 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({
       // When a kind is specified, limit matching to that library strictly —
       // an ebook-only library hit must not claim the audiobook row.
       if (preferredKind) {
-        const pool = preferredKind === "audiobook" ? absSet : calibreSet;
+        const pool = preferredKind === "audiobook" ? absMap : calibreMap;
         if (pool.has(needle)) {
-          return { kind: preferredKind, normalized: needle };
+          return {
+            kind: preferredKind,
+            normalized: needle,
+            url: pool.get(needle) ?? null,
+          };
         }
         if (needle.length < 8) return null;
-        for (const s of pool) {
+        for (const [s, url] of pool) {
           if (s.includes(needle) || needle.includes(s))
-            return { kind: preferredKind, normalized: s };
+            return { kind: preferredKind, normalized: s, url: url ?? null };
         }
         return null;
       }
 
-      const inCal = calibreSet.has(needle);
-      const inAbs = absSet.has(needle);
-      if (inCal || inAbs) {
+      const inCalUrl = calibreMap.get(needle);
+      const inAbsUrl = absMap.get(needle);
+      const hasCal = calibreMap.has(needle);
+      const hasAbs = absMap.has(needle);
+      if (hasCal || hasAbs) {
         return {
-          kind: inAbs ? "audiobook" : "ebook",
+          kind: hasAbs ? "audiobook" : "ebook",
           normalized: needle,
+          url: (hasAbs ? inAbsUrl : inCalUrl) ?? null,
         };
       }
 
       // Substring fallback for long needles (same strategy as Transmission).
       if (needle.length < 8) return null;
-      for (const s of absSet) {
+      for (const [s, url] of absMap) {
         if (s.includes(needle) || needle.includes(s))
-          return { kind: "audiobook", normalized: s };
+          return { kind: "audiobook", normalized: s, url: url ?? null };
       }
-      for (const s of calibreSet) {
+      for (const [s, url] of calibreMap) {
         if (s.includes(needle) || needle.includes(s))
-          return { kind: "ebook", normalized: s };
+          return { kind: "ebook", normalized: s, url: url ?? null };
       }
       return null;
     },
-    [payload, calibreSet, absSet],
+    [payload, calibreMap, absMap],
   );
 
   return (

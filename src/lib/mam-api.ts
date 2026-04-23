@@ -157,6 +157,7 @@ export async function searchBooks(
         added: item.added || null,
         tags: item.tags || null,
         completed: item.times_completed || 0,
+        description: item.description || undefined,
       };
     });
 

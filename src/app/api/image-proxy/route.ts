@@ -22,11 +22,16 @@ export async function GET(request: NextRequest) {
     if (url.includes("viewImageFull.php")) {
       const bookId = url.split("/").pop();
 
-      // Fetch the torrent page HTML
+      // Fetch the torrent page HTML. MAM blocks our old "BookGrab/1.0"
+      // UA with "Ajax load detected", so impersonate a browser.
       const pageUrl = `https://www.myanonamouse.net/t/${bookId}`;
       const pageResponse = await fetch(pageUrl, {
         headers: {
-          "User-Agent": "BookGrab/1.0",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+          Accept:
+            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
           Cookie: MAM_TOKEN ? `mam_id=${MAM_TOKEN}` : "",
         },
       });

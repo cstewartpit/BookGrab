@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Book } from "@/types";
 import { useTransmission } from "@/contexts/TransmissionContext";
 import { useLibrary } from "@/contexts/LibraryContext";
+import BookDetailModal from "./BookDetailModal";
 
 // Transmission torrent.status values:
 //   0 stopped, 1 check-queued, 2 checking, 3 download-queued,
@@ -85,6 +86,7 @@ export default function BookRow({ book }: { book: Book }) {
     "idle",
   );
   const [errorMessage, setErrorMessage] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const tx = matchBook(book.title, book.category);
   const downloadBadge = tx ? torrentBadge(tx) : null;
@@ -94,7 +96,9 @@ export default function BookRow({ book }: { book: Book }) {
     (inLibrary
       ? {
           label:
-            inLibrary.kind === "audiobook" ? "★ In Library" : "★ In Library",
+            inLibrary.kind === "audiobook"
+              ? "🎧 In Library"
+              : "📖 In Library",
           bg: "rgba(16,185,129,0.2)",
           fg: "#6ee7b7",
         }
@@ -180,23 +184,27 @@ export default function BookRow({ book }: { book: Book }) {
       </span>
 
       <div className="bg-row-title" style={{ minWidth: 0 }}>
-        <a
-          href={`https://www.myanonamouse.net/t/${book.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => setDetailOpen(true)}
           style={{
+            background: "transparent",
+            border: "none",
+            padding: 0,
+            textAlign: "left",
             color: "#f1f5f9",
-            textDecoration: "none",
             fontWeight: 600,
             display: "block",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             fontSize: "13.5px",
+            cursor: "pointer",
+            maxWidth: "100%",
+            width: "100%",
           }}
         >
           {book.title}
-        </a>
+        </button>
         <div
           style={{
             color: "#94a3b8",
@@ -240,25 +248,52 @@ export default function BookRow({ book }: { book: Book }) {
         {book.size || ""}
       </span>
 
-      <span
-        className="bg-row-status"
-        title={statusTooltip}
-        style={{
-          minWidth: "140px",
-          textAlign: "center",
-          fontSize: "11px",
-          fontWeight: 600,
-          padding: "3px 10px",
-          borderRadius: "6px",
-          background: statusBadge.bg,
-          color: statusBadge.fg,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {statusBadge.label}
-      </span>
+      {inLibrary?.url && !downloadBadge ? (
+        <a
+          className="bg-row-status"
+          href={inLibrary.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Open in ${inLibrary.kind === "audiobook" ? "Audiobookshelf" : "Calibre"}`}
+          style={{
+            minWidth: "140px",
+            textAlign: "center",
+            fontSize: "11px",
+            fontWeight: 600,
+            padding: "3px 10px",
+            borderRadius: "6px",
+            background: statusBadge.bg,
+            color: statusBadge.fg,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            textDecoration: "none",
+          }}
+        >
+          {statusBadge.label}
+        </a>
+      ) : (
+        <span
+          className="bg-row-status"
+          title={statusTooltip}
+          style={{
+            minWidth: "140px",
+            textAlign: "center",
+            fontSize: "11px",
+            fontWeight: 600,
+            padding: "3px 10px",
+            borderRadius: "6px",
+            background: statusBadge.bg,
+            color: statusBadge.fg,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {statusBadge.label}
+        </span>
+      )}
 
       <button
         className="bg-row-button"
@@ -303,21 +338,47 @@ export default function BookRow({ book }: { book: Book }) {
             {book.size}
           </span>
         )}
-        <span
-          title={statusTooltip}
-          style={{
-            marginLeft: "auto",
-            fontWeight: 600,
-            padding: "2px 8px",
-            borderRadius: "6px",
-            background: statusBadge.bg,
-            color: statusBadge.fg,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {statusBadge.label}
-        </span>
+        {inLibrary?.url && !downloadBadge ? (
+          <a
+            href={inLibrary.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title={`Open in ${inLibrary.kind === "audiobook" ? "Audiobookshelf" : "Calibre"}`}
+            style={{
+              marginLeft: "auto",
+              fontWeight: 600,
+              padding: "2px 8px",
+              borderRadius: "6px",
+              background: statusBadge.bg,
+              color: statusBadge.fg,
+              whiteSpace: "nowrap",
+              textDecoration: "none",
+            }}
+          >
+            {statusBadge.label}
+          </a>
+        ) : (
+          <span
+            title={statusTooltip}
+            style={{
+              marginLeft: "auto",
+              fontWeight: 600,
+              padding: "2px 8px",
+              borderRadius: "6px",
+              background: statusBadge.bg,
+              color: statusBadge.fg,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {statusBadge.label}
+          </span>
+        )}
       </div>
+
+      {detailOpen && (
+        <BookDetailModal book={book} onClose={() => setDetailOpen(false)} />
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ export interface Book {
   added?: string; // Date added
   tags?: string; // Tags associated with the book
   completed?: number; // Number of times completed/snatched
+  description?: string; // HTML description from MAM
 }
 
 export interface SearchResponse {

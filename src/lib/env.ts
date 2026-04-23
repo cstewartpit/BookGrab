@@ -19,7 +19,11 @@ export const getServerEnvVariables = () => {
     DATA_DIR: getOptionalEnvVariable("DATA_DIR"),
     CALIBRE_WEB_URL: getOptionalEnvVariable("CALIBRE_WEB_URL"),
     CALIBRE_WEB_AUTH_EMAIL: getOptionalEnvVariable("CALIBRE_WEB_AUTH_EMAIL"),
+    CALIBRE_WEB_PUBLIC_URL: getOptionalEnvVariable("CALIBRE_WEB_PUBLIC_URL"),
     AUDIOBOOKSHELF_URL: getOptionalEnvVariable("AUDIOBOOKSHELF_URL"),
     AUDIOBOOKSHELF_TOKEN: getOptionalEnvVariable("AUDIOBOOKSHELF_TOKEN"),
+    AUDIOBOOKSHELF_PUBLIC_URL: getOptionalEnvVariable(
+      "AUDIOBOOKSHELF_PUBLIC_URL",
+    ),
   };
 };

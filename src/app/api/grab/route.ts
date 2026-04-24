@@ -5,7 +5,7 @@ import { logGrab } from "@/lib/grabs-log";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { torrentUrl, category, title } = body;
+    const { torrentUrl, category, title, book } = body;
 
     console.log({ body });
     if (!torrentUrl) {
@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
         title: title.trim(),
         category: category as "audiobook" | "ebook",
         torrentUrl,
+        book: book && typeof book === "object" ? book : undefined,
       }).catch((err) => console.error("[grabs-log] write failed:", err));
     }
 

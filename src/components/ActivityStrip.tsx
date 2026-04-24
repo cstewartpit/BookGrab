@@ -1,27 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Book } from "@/types";
 import { useTransmission, TorrentSnapshot } from "@/contexts/TransmissionContext";
-import { useLibrary } from "@/contexts/LibraryContext";
+import BookRow from "./BookRow";
 
 type GrabEntry = {
   at: string;
   title: string;
   category: "audiobook" | "ebook";
   torrentUrl: string;
+  book?: Book;
 };
 
-function relative(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  if (diffMs < 0) return "soon";
-  const min = Math.round(diffMs / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
-  const hrs = Math.round(min / 60);
-  if (hrs < 24) return `${hrs} h ago`;
-  const days = Math.round(hrs / 24);
-  return `${days} d ago`;
-}
+const RECENT_ON_HOME = 5;
 
 function downloadingLabel(t: TorrentSnapshot): string {
   const pct = Math.round(t.percentDone * 100);
@@ -39,14 +32,13 @@ function downloadingLabel(t: TorrentSnapshot): string {
 
 export default function ActivityStrip() {
   const { torrents } = useTransmission();
-  const { matchInLibrary } = useLibrary();
   const [grabs, setGrabs] = useState<GrabEntry[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch("/api/recent-grabs");
+        const res = await fetch(`/api/recent-grabs?limit=${RECENT_ON_HOME}`);
         if (!res.ok) return;
         const data = (await res.json()) as { grabs: GrabEntry[] };
         if (!cancelled) setGrabs(data.grabs || []);
@@ -66,137 +58,140 @@ export default function ActivityStrip() {
     (t) =>
       t.status === 4 || t.status === 3 || t.status === 5 || t.status === 1 || t.status === 2,
   );
-  const recentlyAdded = grabs
-    .filter((g) => {
-      const ageMs = Date.now() - new Date(g.at).getTime();
-      return ageMs < 7 * 24 * 60 * 60 * 1000;
-    })
-    .slice(0, 10);
+  // Only grabs that have the full Book snapshot can be rendered as a
+  // full BookRow. Older entries missing `.book` are silently skipped
+  // here; they still show up on the dedicated /activity page as a
+  // compact fallback.
+  const recentWithBook = grabs.filter((g) => g.book);
 
-  if (downloading.length === 0 && recentlyAdded.length === 0) return null;
+  if (downloading.length === 0 && recentWithBook.length === 0) return null;
 
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "12px",
+        gap: "18px",
         marginBottom: "18px",
       }}
     >
       {downloading.length > 0 && (
-        <Section
-          label="Downloading now"
-          count={downloading.length}
-          accent="#3b82f6"
-        >
-          {downloading.map((t) => {
-            const dir = t.downloadDir || "";
-            const category: "audiobook" | "ebook" | undefined = dir.includes(
-              "audiobook",
-            )
-              ? "audiobook"
-              : dir.includes("ebook")
-                ? "ebook"
-                : undefined;
-            return (
-              <Chip
-                key={`${dir}-${t.name}`}
-                title={t.name}
-                subtitle={downloadingLabel(t)}
-                accent="#3b82f6"
-                category={category}
-              />
-            );
-          })}
-        </Section>
+        <div>
+          <SectionHeader label="Downloading now" count={downloading.length} accent="#3b82f6" />
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              overflowX: "auto",
+              paddingBottom: "4px",
+              scrollbarWidth: "thin",
+            }}
+          >
+            {downloading.map((t) => {
+              const dir = t.downloadDir || "";
+              const category: "audiobook" | "ebook" | undefined = dir.includes(
+                "audiobook",
+              )
+                ? "audiobook"
+                : dir.includes("ebook")
+                  ? "ebook"
+                  : undefined;
+              return (
+                <Chip
+                  key={`${dir}-${t.name}`}
+                  title={t.name}
+                  subtitle={downloadingLabel(t)}
+                  accent="#3b82f6"
+                  category={category}
+                />
+              );
+            })}
+          </div>
+        </div>
       )}
-      {recentlyAdded.length > 0 && (
-        <Section
-          label="Recently added"
-          count={recentlyAdded.length}
-          accent="#10b981"
-        >
-          {recentlyAdded.map((g) => {
-            const inLib = matchInLibrary(g.title, g.category);
-            const subtitle = inLib
-              ? inLib.kind === "audiobook"
-                ? "★ Ready to listen"
-                : "★ Ready to read"
-              : relative(g.at);
-            return (
-              <Chip
-                key={`${g.at}-${g.category}-${g.title}`}
-                title={g.title}
-                subtitle={subtitle}
-                accent={inLib ? "#10b981" : "#64748b"}
-                category={g.category}
-              />
-            );
-          })}
-        </Section>
+
+      {recentWithBook.length > 0 && (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "6px",
+            }}
+          >
+            <SectionHeader label="Recently added" count={recentWithBook.length} accent="#10b981" />
+            <Link
+              href="/activity"
+              style={{
+                fontSize: "12px",
+                color: "#60a5fa",
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              See all →
+            </Link>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            {recentWithBook.map((g) => (
+              <BookRow key={`${g.at}-${g.category}-${g.title}`} book={g.book!} />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function Section({
+function SectionHeader({
   label,
   count,
   accent,
-  children,
 }: {
   label: string;
   count: number;
   accent: string;
-  children: React.ReactNode;
 }) {
   return (
-    <div>
-      <div
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        marginBottom: "6px",
+      }}
+    >
+      <span
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          marginBottom: "6px",
+          fontSize: "11px",
+          fontWeight: 700,
+          color: "#94a3b8",
+          textTransform: "uppercase",
+          letterSpacing: "0.6px",
         }}
       >
-        <span
-          style={{
-            fontSize: "11px",
-            fontWeight: 700,
-            color: "#94a3b8",
-            textTransform: "uppercase",
-            letterSpacing: "0.6px",
-          }}
-        >
-          {label}
-        </span>
-        <span
-          style={{
-            fontSize: "11px",
-            color: accent,
-            background: "#1e293b",
-            border: `1px solid ${accent}33`,
-            padding: "1px 8px",
-            borderRadius: "999px",
-            fontWeight: 700,
-          }}
-        >
-          {count}
-        </span>
-      </div>
-      <div
+        {label}
+      </span>
+      <span
         style={{
-          display: "flex",
-          gap: "8px",
-          overflowX: "auto",
-          paddingBottom: "4px",
-          scrollbarWidth: "thin",
+          fontSize: "11px",
+          color: accent,
+          background: "#1e293b",
+          border: `1px solid ${accent}33`,
+          padding: "1px 8px",
+          borderRadius: "999px",
+          fontWeight: 700,
         }}
       >
-        {children}
-      </div>
+        {count}
+      </span>
     </div>
   );
 }

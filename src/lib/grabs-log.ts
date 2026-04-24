@@ -1,11 +1,16 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { Book } from "@/types";
 
 export type GrabEntry = {
   at: string;
   title: string;
   category: "audiobook" | "ebook";
   torrentUrl: string;
+  /** Full MAM book snapshot — present on grabs logged after the
+   *  2026-04 "render recent as full rows" change. Older entries may
+   *  lack this and the UI falls back to the minimal chip shape. */
+  book?: Book;
 };
 
 const MAX_KEPT = 200;

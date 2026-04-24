@@ -79,6 +79,7 @@ export default function BookDetailModal({
           torrentUrl: book.torrentLink,
           category: book.category,
           title: book.title,
+          book,
         }),
       });
       const data = await res.json();

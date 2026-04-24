@@ -125,6 +125,7 @@ export default function BookRow({ book }: { book: Book }) {
           torrentUrl: book.torrentLink,
           category: book.category,
           title: book.title,
+          book,
         }),
       });
       const data = await res.json();

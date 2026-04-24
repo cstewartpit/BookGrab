@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Book } from "@/types";
 import { useTransmission, TorrentSnapshot } from "@/contexts/TransmissionContext";
 import BookRow from "./BookRow";
@@ -30,7 +29,11 @@ function downloadingLabel(t: TorrentSnapshot): string {
   return `${pct}%`;
 }
 
-export default function ActivityStrip() {
+export default function ActivityStrip({
+  onShowActivity,
+}: {
+  onShowActivity?: () => void;
+}) {
   const { torrents } = useTransmission();
   const [grabs, setGrabs] = useState<GrabEntry[]>([]);
 
@@ -121,17 +124,22 @@ export default function ActivityStrip() {
             }}
           >
             <SectionHeader label="Recently added" count={recentWithBook.length} accent="#10b981" />
-            <Link
-              href="/activity"
-              style={{
-                fontSize: "12px",
-                color: "#60a5fa",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              See all →
-            </Link>
+            {onShowActivity && (
+              <button
+                onClick={onShowActivity}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: "12px",
+                  color: "#60a5fa",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                See all →
+              </button>
+            )}
           </div>
           <div
             style={{

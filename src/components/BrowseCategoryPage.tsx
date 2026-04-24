@@ -13,6 +13,7 @@ interface BrowseCategoryPageProps {
   initialSort: string;
   initialTag?: string;
   initialQuery?: string;
+  onShowActivity?: () => void;
 }
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -75,6 +76,7 @@ export default function BrowseCategoryPage({
   initialSort,
   initialTag,
   initialQuery,
+  onShowActivity,
 }: BrowseCategoryPageProps) {
   const router = useRouter();
   const [sort, setSort] = useState(initialSort);
@@ -206,7 +208,7 @@ export default function BrowseCategoryPage({
         )}
       </h1>
 
-      <ActivityStrip />
+      <ActivityStrip onShowActivity={onShowActivity} />
 
       {/* Filter bar */}
       <div className="bg-filter-bar">

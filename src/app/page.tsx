@@ -1,15 +1,17 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import BrowseCategoryPage from "@/components/BrowseCategoryPage";
 import SettingsModal from "@/components/SettingsModal";
+import RecentActivityDrawer from "@/components/RecentActivityDrawer";
 
 function Header({
   onSettingsClick,
+  onActivityClick,
 }: {
   onSettingsClick: () => void;
+  onActivityClick: () => void;
 }) {
   return (
     <header
@@ -84,15 +86,17 @@ function Header({
         </div>
 
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-          <Link
-            href="/activity"
+          <button
+            onClick={onActivityClick}
             aria-label="Recent activity"
             title="Recent activity"
             style={{
+              background: "transparent",
+              border: "none",
               color: "#cbd5e1",
               padding: "8px",
+              cursor: "pointer",
               display: "inline-flex",
-              textDecoration: "none",
             }}
           >
             <svg
@@ -110,7 +114,7 @@ function Header({
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-          </Link>
+          </button>
           <button
             onClick={onSettingsClick}
             aria-label="Settings"
@@ -160,6 +164,7 @@ function HomeContent() {
   const tag = sp.get("tag") || undefined;
   const query = sp.get("q") || undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   return (
     <div
@@ -169,13 +174,17 @@ function HomeContent() {
         color: "#e2e8f0",
       }}
     >
-      <Header onSettingsClick={() => setSettingsOpen(true)} />
+      <Header
+        onSettingsClick={() => setSettingsOpen(true)}
+        onActivityClick={() => setActivityOpen(true)}
+      />
 
       <BrowseCategoryPage
         category={cat}
         initialSort={sort}
         initialTag={tag}
         initialQuery={query}
+        onShowActivity={() => setActivityOpen(true)}
       />
 
 
@@ -195,6 +204,11 @@ function HomeContent() {
       <SettingsModal
         isOpen={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <RecentActivityDrawer
+        isOpen={activityOpen}
+        onClose={() => setActivityOpen(false)}
       />
     </div>
   );

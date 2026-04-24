@@ -13,20 +13,6 @@ type GrabEntry = {
   book?: Book;
 };
 
-function relativeDate(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  if (diffMs < 0) return "soon";
-  const min = Math.round(diffMs / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
-  const hrs = Math.round(min / 60);
-  if (hrs < 24) return `${hrs} h ago`;
-  const days = Math.round(hrs / 24);
-  if (days < 14) return `${days} d ago`;
-  const weeks = Math.round(days / 7);
-  return `${weeks} wk ago`;
-}
-
 function groupByDay(
   grabs: GrabEntry[],
 ): Array<{ label: string; items: GrabEntry[] }> {
@@ -55,47 +41,22 @@ function groupByDay(
     .map((label) => ({ label, items: buckets[label] }));
 }
 
-function FallbackRow({ grab }: { grab: GrabEntry }) {
-  return (
-    <div
-      className="bg-book-row"
-      style={{ gridTemplateColumns: "auto 1fr" }}
-      title="Grabbed before the full-snapshot upgrade; older entry."
-    >
-      <span
-        className="bg-row-badge"
-        style={{
-          padding: "2px 6px",
-          borderRadius: "4px",
-          fontSize: "10px",
-          fontWeight: 700,
-          letterSpacing: "0.3px",
-          background: grab.category === "audiobook" ? "#1e3a8a" : "#065f46",
-          color: grab.category === "audiobook" ? "#93c5fd" : "#6ee7b7",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {grab.category === "audiobook" ? "AUD" : "EBK"}
-      </span>
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            color: "#f1f5f9",
-            fontWeight: 600,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontSize: "13.5px",
-          }}
-        >
-          {grab.title}
-        </div>
-        <div style={{ color: "#64748b", fontSize: "12px" }}>
-          Grabbed {relativeDate(grab.at)} · legacy entry
-        </div>
-      </div>
-    </div>
-  );
+// Pre-`book`-snapshot grab entries only have {title, category, torrentUrl}.
+// Synthesize a minimal Book so BookRow gives them every feature the main
+// list has — AUD/EBK pill, title-click modal, matchInLibrary deep-link,
+// matchBook download badge, Download-again button. Missing fields (author,
+// format, size, length) render as empty strings, which the row and modal
+// both handle gracefully.
+function synthesizeBook(g: GrabEntry): Book {
+  return {
+    id: `legacy-${g.at}`,
+    title: g.title,
+    author: "",
+    format: "",
+    category: g.category,
+    torrentLink: g.torrentUrl,
+    seeders: 0,
+  };
 }
 
 export default function RecentActivityDrawer({
@@ -270,19 +231,12 @@ export default function RecentActivityDrawer({
                     gap: "6px",
                   }}
                 >
-                  {items.map((g) =>
-                    g.book ? (
-                      <BookRow
-                        key={`${g.at}-${g.category}-${g.title}`}
-                        book={g.book}
-                      />
-                    ) : (
-                      <FallbackRow
-                        key={`${g.at}-${g.category}-${g.title}`}
-                        grab={g}
-                      />
-                    ),
-                  )}
+                  {items.map((g) => (
+                    <BookRow
+                      key={`${g.at}-${g.category}-${g.title}`}
+                      book={g.book ?? synthesizeBook(g)}
+                    />
+                  ))}
                 </div>
               </div>
             ))

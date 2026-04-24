@@ -91,18 +91,26 @@ export default function BookRow({ book }: { book: Book }) {
   const tx = matchBook(book.title, book.category);
   const downloadBadge = tx ? torrentBadge(tx) : null;
   const inLibrary = matchInLibrary(book.title, book.category);
+  const libraryBadge = inLibrary
+    ? {
+        label:
+          inLibrary.kind === "audiobook" ? "🎧 In Library" : "📖 In Library",
+        bg: "rgba(16,185,129,0.2)",
+        fg: "#6ee7b7",
+      }
+    : null;
+  // Prefer the in-flight Transmission state (downloading / waiting / paused /
+  // checking) while the torrent is still doing something. Once it's complete
+  // (status 6 AND percentDone 1) AND the book is in the user's library, the
+  // library deep-link is more actionable than "✓ Downloaded". A downloaded-
+  // but-not-yet-ingested book falls through to the download badge.
+  const torrentInFlight = tx ? !(tx.status === 6 && tx.percentDone >= 1) : false;
   const statusBadge =
+    (torrentInFlight ? downloadBadge : null) ||
+    libraryBadge ||
     downloadBadge ||
-    (inLibrary
-      ? {
-          label:
-            inLibrary.kind === "audiobook"
-              ? "🎧 In Library"
-              : "📖 In Library",
-          bg: "rgba(16,185,129,0.2)",
-          fg: "#6ee7b7",
-        }
-      : availabilityBadge(book.seeders ?? 0));
+    availabilityBadge(book.seeders ?? 0);
+  const statusIsLibrary = statusBadge === libraryBadge;
 
   const handleGrab = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -248,7 +256,7 @@ export default function BookRow({ book }: { book: Book }) {
         {book.size || ""}
       </span>
 
-      {inLibrary?.url && !downloadBadge ? (
+      {statusIsLibrary && inLibrary?.url ? (
         <a
           className="bg-row-status"
           href={inLibrary.url}
@@ -338,7 +346,7 @@ export default function BookRow({ book }: { book: Book }) {
             {book.size}
           </span>
         )}
-        {inLibrary?.url && !downloadBadge ? (
+        {statusIsLibrary && inLibrary?.url ? (
           <a
             href={inLibrary.url}
             target="_blank"

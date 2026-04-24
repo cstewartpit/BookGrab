@@ -56,6 +56,14 @@ function normalize(s: string): string {
     .trim();
 }
 
+const STOPWORDS = new Set([
+  "the","a","an","of","and","to","in","on","for","by","with","at","is","it","as",
+]);
+
+function sigTokens(s: string): string[] {
+  return s.split(" ").filter((w) => w.length >= 2 && !STOPWORDS.has(w));
+}
+
 function buildIndex(torrents: TorrentSnapshot[]): Map<string, TorrentSnapshot> {
   const map = new Map<string, TorrentSnapshot>();
   for (const t of torrents) {
@@ -121,22 +129,31 @@ export const TransmissionProvider: React.FC<{ children: React.ReactNode }> = ({
       const scopedIndex = buildIndex(pool);
       const exact = scopedIndex.get(needle);
       if (exact) return exact;
-      // Fallback: bidirectional substring. Torrent names sometimes include
-      // extra tokens (author / subseries / format) that a MAM title lacks,
-      // but the reverse also happens — the torrent uploader may strip
-      // subtitles from the file name (e.g. the MAM title is
-      // "The Subtle Art of Not Giving a F*ck: A Counterintuitive Approach..."
-      // but the torrent is "The Subtle Art of Not Giving a - Mark Manson.epub").
-      // Require both sides to have ≥ 6 meaningful chars to avoid matching
-      // tiny tokens like "II".
+      // Fallback: bidirectional substring, but guarded against coincidental
+      // embedded phrases. A short needle like "the martian" would otherwise
+      // match an unrelated torrent named "Diary Of An Asscan The Martian -
+      // Andy Weir.epub" just because the phrase happens to appear mid-string.
+      // Require one of the needle's first three significant (non-stopword)
+      // tokens to appear within the first four positions of the torrent's
+      // tokens — real matches have the book-title tokens at or near the
+      // start of the filename (either at index 0 or right after an author
+      // prefix).
       if (needle.length < 6) return null;
+      const needleLeadingSig = sigTokens(needle).slice(0, 3);
       let best: TorrentSnapshot | null = null;
       for (const t of pool) {
         const tn = normalize(t.name);
         if (tn.length < 6) continue;
-        if (tn.includes(needle) || needle.includes(tn)) {
-          if (!best || t.percentDone > best.percentDone) best = t;
-        }
+        if (!(tn.includes(needle) || needle.includes(tn))) continue;
+        const tnTokens = tn.split(" ");
+        const leadingPos = Math.min(
+          ...needleLeadingSig.map((w) => {
+            const idx = tnTokens.indexOf(w);
+            return idx < 0 ? Infinity : idx;
+          }),
+        );
+        if (leadingPos > 3) continue;
+        if (!best || t.percentDone > best.percentDone) best = t;
       }
       return best;
     },

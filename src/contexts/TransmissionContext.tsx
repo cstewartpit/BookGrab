@@ -121,14 +121,20 @@ export const TransmissionProvider: React.FC<{ children: React.ReactNode }> = ({
       const scopedIndex = buildIndex(pool);
       const exact = scopedIndex.get(needle);
       if (exact) return exact;
-      // Fallback: substring. MAM titles tend to be shorter than the
-      // full torrent name (which includes author / subseries / format),
-      // so check "needle in torrent name". Require the needle to be at
-      // least 6 chars to avoid matching tiny tokens like "II".
+      // Fallback: bidirectional substring. Torrent names sometimes include
+      // extra tokens (author / subseries / format) that a MAM title lacks,
+      // but the reverse also happens — the torrent uploader may strip
+      // subtitles from the file name (e.g. the MAM title is
+      // "The Subtle Art of Not Giving a F*ck: A Counterintuitive Approach..."
+      // but the torrent is "The Subtle Art of Not Giving a - Mark Manson.epub").
+      // Require both sides to have ≥ 6 meaningful chars to avoid matching
+      // tiny tokens like "II".
       if (needle.length < 6) return null;
       let best: TorrentSnapshot | null = null;
       for (const t of pool) {
-        if (normalize(t.name).includes(needle)) {
+        const tn = normalize(t.name);
+        if (tn.length < 6) continue;
+        if (tn.includes(needle) || needle.includes(tn)) {
           if (!best || t.percentDone > best.percentDone) best = t;
         }
       }

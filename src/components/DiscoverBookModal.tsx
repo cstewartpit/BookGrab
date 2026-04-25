@@ -264,12 +264,12 @@ export default function DiscoverBookModal({
                 cursor: "pointer",
               }}
             >
-              Find on bookgrab
+              Find available downloads
             </button>
           )}
           {findStatus === "loading" && (
             <div style={{ color: "#94a3b8", fontSize: "13px" }}>
-              Searching MAM...
+              Searching...
             </div>
           )}
           {findStatus === "error" && (
@@ -307,14 +307,14 @@ export default function DiscoverBookModal({
                 }}
               >
                 {matches.length === 0
-                  ? "No matches on MAM"
-                  : `Available on MAM · ${matches.length}`}
+                  ? "Not available right now"
+                  : `Available to download · ${matches.length}`}
               </div>
               {matches.length === 0 ? (
                 <div style={{ color: "#94a3b8", fontSize: "13px" }}>
-                  Nothing turned up. The torrent may not exist on MAM, or the
-                  title is mismatched. Try the regular search with a shorter
-                  query.
+                  Nothing turned up. The title might not be available, or the
+                  exact wording differs — try the Search tab with a shorter
+                  title.
                 </div>
               ) : (
                 <div

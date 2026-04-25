@@ -64,17 +64,13 @@ function availabilityBadge(seeders: number): {
       fg: "#fde68a",
     };
   }
-  if (seeders < 3) {
-    return {
-      label: "✓ Available",
-      bg: "rgba(148,163,184,0.15)",
-      fg: "#cbd5e1",
-    };
-  }
+  // Blue download arrow distinguishes "available to grab" from the
+  // green check used for "Downloaded" / "In Library" — they were both
+  // green ticks before and family-level users couldn't tell them apart.
   return {
-    label: "✓ Available",
-    bg: "rgba(16,185,129,0.15)",
-    fg: "#6ee7b7",
+    label: "⬇ Available",
+    bg: "rgba(59,130,246,0.18)",
+    fg: "#93c5fd",
   };
 }
 

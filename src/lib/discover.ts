@@ -153,7 +153,7 @@ type OlSearchDoc = {
   author_name?: string[];
   cover_i?: number;
   first_publish_year?: number;
-  ratings_count?: number;
+  want_to_read_count?: number;
 };
 type OlSearchResponse = { numFound?: number; docs?: OlSearchDoc[] };
 
@@ -175,14 +175,20 @@ async function fetchOlSearchByYear(
   year: number,
   limit = 24,
 ): Promise<DiscoverBook[]> {
+  // `want_to_read_count` (how many OL users have it on their TBR list)
+  // is the cleanest popularity signal — it filters out self-pub spam
+  // and OL's frequent metadata duplicates (e.g. a "Great Gatsby" work
+  // record mis-tagged with first_publish_year=2026 has zero readers).
+  // `sort=already_read` ranks by reading-log presence, which dovetails
+  // with the same signal.
   const fields =
-    "key,title,author_name,cover_i,first_publish_year,ratings_count";
+    "key,title,author_name,cover_i,first_publish_year,want_to_read_count";
   // OL's search endpoint rejects `q=*` with 422; use a wildcard field
   // query instead. The `first_publish_year=` filter still narrows to
   // the right year.
   const url =
     `https://openlibrary.org/search.json` +
-    `?q=title%3A*&first_publish_year=${year}&sort=rating&limit=${limit * 3}` +
+    `?q=title%3A*&first_publish_year=${year}&sort=already_read&limit=${limit * 4}` +
     `&fields=${encodeURIComponent(fields)}`;
   const res = await fetch(url, {
     headers: { Accept: "application/json", "User-Agent": CHROME_UA },
@@ -192,12 +198,11 @@ async function fetchOlSearchByYear(
   }
   const data = (await res.json()) as OlSearchResponse;
   const docs = data.docs ?? [];
-  // OL's `sort=rating` can promote books with one 5★ rating. Prefer
-  // entries with a few ratings; fall back to the unfiltered list if
-  // that strips it too thin to be useful.
-  const popular = docs.filter((d) => (d.ratings_count ?? 0) >= 5);
-  const pool = popular.length >= 12 ? popular : docs;
-  return pool
+  // Hard floor — no fallback. A thin list of real books is better than
+  // a full list padded with spam (especially relevant in early-year
+  // months when the current-year list will be small).
+  return docs
+    .filter((d) => (d.want_to_read_count ?? 0) >= 5)
     .map(searchDocToBook)
     .filter((b): b is DiscoverBook => b !== null)
     .slice(0, limit);

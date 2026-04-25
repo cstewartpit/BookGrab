@@ -72,13 +72,13 @@ export default function DiscoverGrid() {
   return (
     <div>
       <div
+        className="bg-tab-strip"
         style={{
           display: "flex",
           gap: "6px",
           overflowX: "auto",
           marginBottom: "16px",
           paddingBottom: "4px",
-          scrollbarWidth: "thin",
         }}
       >
         {lists.map((l) => {

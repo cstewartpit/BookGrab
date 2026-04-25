@@ -43,6 +43,16 @@ body {
   --amplify-colors-brand-primary-100: #bae6fd;
 }
 
+/* Horizontally-scrolling tab strip (Discover genre tabs). Hides the
+ * scrollbar across browsers while keeping the scroll behaviour. */
+.bg-tab-strip {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+.bg-tab-strip::-webkit-scrollbar {
+  display: none; /* Chrome / Safari / WebKit */
+}
+
 /* --- Responsive layout classes --------------------------------------- */
 
 /* Overall page gutters tighten on small screens. */

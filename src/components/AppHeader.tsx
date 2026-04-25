@@ -1,18 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-type Tagline = "Browse & Download Books" | "Recent activity" | "Discover";
+const TABS: { href: string; label: string }[] = [
+  { href: "/", label: "Search" },
+  { href: "/discover", label: "Discover" },
+];
 
 export default function AppHeader({
-  tagline = "Browse & Download Books",
   onSettingsClick,
   onActivityClick,
 }: {
-  tagline?: Tagline;
   onSettingsClick: () => void;
   onActivityClick: () => void;
 }) {
+  const pathname = usePathname();
+
   return (
     <header
       style={{
@@ -69,59 +73,19 @@ export default function AppHeader({
               />
             </svg>
           </div>
-          <div>
-            <div
-              style={{
-                fontSize: "20px",
-                fontWeight: "700",
-                color: "#f1f5f9",
-                lineHeight: "1",
-              }}
-            >
-              BookGrab
-            </div>
-            <div
-              className="bg-header-tagline"
-              style={{
-                fontSize: "11px",
-                color: "#64748b",
-                lineHeight: "1.4",
-                marginTop: "2px",
-              }}
-            >
-              {tagline}
-            </div>
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: "700",
+              color: "#f1f5f9",
+              lineHeight: "1",
+            }}
+          >
+            BookGrab
           </div>
         </Link>
 
         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-          <Link
-            href="/discover"
-            aria-label="Discover"
-            title="Discover popular books"
-            style={{
-              color: "#cbd5e1",
-              padding: "8px",
-              display: "inline-flex",
-              textDecoration: "none",
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="22"
-              height="22"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-              />
-            </svg>
-          </Link>
           <button
             onClick={onActivityClick}
             aria-label="Recent activity"
@@ -186,6 +150,37 @@ export default function AppHeader({
           </button>
         </div>
       </div>
+
+      <nav
+        style={{
+          display: "flex",
+          gap: "4px",
+          padding: "0 16px",
+        }}
+      >
+        {TABS.map((t) => {
+          const active = pathname === t.href;
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              style={{
+                position: "relative",
+                padding: "10px 14px",
+                color: active ? "#f1f5f9" : "#94a3b8",
+                fontSize: "13px",
+                fontWeight: active ? 700 : 500,
+                textDecoration: "none",
+                borderBottom: `2px solid ${active ? "#3b82f6" : "transparent"}`,
+                marginBottom: "-1px",
+                transition: "color 0.15s ease",
+              }}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }

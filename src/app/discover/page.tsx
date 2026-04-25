@@ -19,7 +19,6 @@ export default function DiscoverPage() {
       }}
     >
       <AppHeader
-        tagline="Discover"
         onSettingsClick={() => setSettingsOpen(true)}
         onActivityClick={() => setActivityOpen(true)}
       />

@@ -145,66 +145,180 @@ const fetchOlSubject = (subject: string, limit = 20) =>
     `https://openlibrary.org/subjects/${encodeURIComponent(subject)}.json?limit=${limit}`,
   );
 
+// --- OpenLibrary search by year --------------------------------------------
+
+type OlSearchDoc = {
+  key?: string;
+  title?: string;
+  author_name?: string[];
+  cover_i?: number;
+  first_publish_year?: number;
+  ratings_count?: number;
+};
+type OlSearchResponse = { numFound?: number; docs?: OlSearchDoc[] };
+
+function searchDocToBook(d: OlSearchDoc): DiscoverBook | null {
+  if (!d.title || !d.author_name?.length) return null;
+  return {
+    source: "openlibrary",
+    externalId: d.key || d.title,
+    title: d.title.trim(),
+    author: d.author_name.join(", "),
+    coverUrl: d.cover_i
+      ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg`
+      : undefined,
+    year: d.first_publish_year,
+  };
+}
+
+async function fetchOlSearchByYear(
+  year: number,
+  limit = 24,
+): Promise<DiscoverBook[]> {
+  const fields =
+    "key,title,author_name,cover_i,first_publish_year,ratings_count";
+  // OL's search endpoint rejects `q=*` with 422; use a wildcard field
+  // query instead. The `first_publish_year=` filter still narrows to
+  // the right year.
+  const url =
+    `https://openlibrary.org/search.json` +
+    `?q=title%3A*&first_publish_year=${year}&sort=rating&limit=${limit * 3}` +
+    `&fields=${encodeURIComponent(fields)}`;
+  const res = await fetch(url, {
+    headers: { Accept: "application/json", "User-Agent": CHROME_UA },
+  });
+  if (!res.ok) {
+    throw new Error(`OpenLibrary search ${year} → ${res.status}`);
+  }
+  const data = (await res.json()) as OlSearchResponse;
+  const docs = data.docs ?? [];
+  // OL's `sort=rating` can promote books with one 5★ rating. Prefer
+  // entries with a few ratings; fall back to the unfiltered list if
+  // that strips it too thin to be useful.
+  const popular = docs.filter((d) => (d.ratings_count ?? 0) >= 5);
+  const pool = popular.length >= 12 ? popular : docs;
+  return pool
+    .map(searchDocToBook)
+    .filter((b): b is DiscoverBook => b !== null)
+    .slice(0, limit);
+}
+
 // --- List definitions -------------------------------------------------------
 
-export const LIST_DEFINITIONS: Array<{
+type ListDefinition = {
   id: string;
   label: string;
   source: "nyt" | "openlibrary";
   fetcher: () => Promise<DiscoverBook[]>;
   requiresNyt?: boolean;
-}> = [
-  {
-    id: "trending",
-    label: "Trending",
-    source: "openlibrary",
-    fetcher: () => fetchOlTrending(24),
-  },
-  {
-    id: "fiction",
-    label: "Fiction",
-    source: "nyt",
-    requiresNyt: true,
-    fetcher: () => fetchNyt("combined-print-and-e-book-fiction"),
-  },
-  {
-    id: "nonfiction",
-    label: "Nonfiction",
-    source: "nyt",
-    requiresNyt: true,
-    fetcher: () => fetchNyt("combined-print-and-e-book-nonfiction"),
-  },
-  {
-    id: "scifi-fantasy",
-    label: "Sci-Fi & Fantasy",
-    source: "openlibrary",
-    fetcher: () => fetchOlSubject("science_fiction", 24),
-  },
-  {
-    id: "mystery",
-    label: "Mystery",
-    source: "openlibrary",
-    fetcher: () => fetchOlSubject("mystery", 24),
-  },
-  {
-    id: "audio-fiction",
-    label: "Audio Fiction",
-    source: "nyt",
-    requiresNyt: true,
-    fetcher: () => fetchNyt("audio-fiction"),
-  },
-  {
-    id: "audio-nonfiction",
-    label: "Audio Nonfiction",
-    source: "nyt",
-    requiresNyt: true,
-    fetcher: () => fetchNyt("audio-nonfiction"),
-  },
-];
+};
 
-export function availableLists(): typeof LIST_DEFINITIONS {
+// Built dynamically so the Top YYYY entries pick up the current year
+// without a redeploy when January rolls over.
+function getListDefinitions(): ListDefinition[] {
+  const currentYear = new Date().getFullYear();
+  return [
+    {
+      id: "trending",
+      label: "Trending",
+      source: "openlibrary",
+      fetcher: () => fetchOlTrending(24),
+    },
+    {
+      id: `top-${currentYear}`,
+      label: `Top ${currentYear}`,
+      source: "openlibrary",
+      fetcher: () => fetchOlSearchByYear(currentYear, 24),
+    },
+    {
+      id: `top-${currentYear - 1}`,
+      label: `Top ${currentYear - 1}`,
+      source: "openlibrary",
+      fetcher: () => fetchOlSearchByYear(currentYear - 1, 24),
+    },
+    {
+      id: "fiction",
+      label: "Fiction",
+      source: "nyt",
+      requiresNyt: true,
+      fetcher: () => fetchNyt("combined-print-and-e-book-fiction"),
+    },
+    {
+      id: "nonfiction",
+      label: "Nonfiction",
+      source: "openlibrary",
+      // NYT bestseller list when a key's available, OL subject otherwise.
+      fetcher: async () => {
+        const { NYT_API_KEY } = getServerEnvVariables();
+        return NYT_API_KEY
+          ? fetchNyt("combined-print-and-e-book-nonfiction")
+          : fetchOlSubject("nonfiction", 24);
+      },
+    },
+    {
+      id: "scifi-fantasy",
+      label: "Sci-Fi & Fantasy",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("science_fiction", 24),
+    },
+    {
+      id: "mystery",
+      label: "Mystery",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("mystery", 24),
+    },
+    {
+      id: "thriller",
+      label: "Thriller",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("thriller", 24),
+    },
+    {
+      id: "romance",
+      label: "Romance",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("romance", 24),
+    },
+    {
+      id: "biography",
+      label: "Biography",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("biography", 24),
+    },
+    {
+      id: "history",
+      label: "History",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("history", 24),
+    },
+    {
+      id: "self-help",
+      label: "Self-help",
+      source: "openlibrary",
+      fetcher: () => fetchOlSubject("self-help", 24),
+    },
+    {
+      id: "audio-fiction",
+      label: "Audio Fiction",
+      source: "nyt",
+      requiresNyt: true,
+      fetcher: () => fetchNyt("audio-fiction"),
+    },
+    {
+      id: "audio-nonfiction",
+      label: "Audio Nonfiction",
+      source: "nyt",
+      requiresNyt: true,
+      fetcher: () => fetchNyt("audio-nonfiction"),
+    },
+  ];
+}
+
+export function availableLists(): ListDefinition[] {
   const { NYT_API_KEY } = getServerEnvVariables();
-  return LIST_DEFINITIONS.filter((l) => !l.requiresNyt || !!NYT_API_KEY);
+  return getListDefinitions().filter(
+    (l) => !l.requiresNyt || !!NYT_API_KEY,
+  );
 }
 
 export async function getDiscoverList(id: string): Promise<DiscoverList | null> {

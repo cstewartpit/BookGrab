@@ -25,5 +25,6 @@ export const getServerEnvVariables = () => {
     AUDIOBOOKSHELF_PUBLIC_URL: getOptionalEnvVariable(
       "AUDIOBOOKSHELF_PUBLIC_URL",
     ),
+    NYT_API_KEY: getOptionalEnvVariable("NYT_API_KEY"),
   };
 };
